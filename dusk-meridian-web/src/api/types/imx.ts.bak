@@ -1,0 +1,53 @@
+// import { passport } from '@imtbl/sdk';
+
+export interface IMXUser {
+  sub: string;
+  email?: string;
+  nickname?: string;
+  picture?: string;
+  walletAddress?: string;
+  accessToken?: string;
+  idToken?: string;
+}
+
+export interface IMXAuthState {
+  user: IMXUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  walletAddress: string | null;
+  provider: any | null;
+}
+
+export interface IMXConfig {
+  clientId: string;
+  publishableKey: string;
+  environment: 'SANDBOX' | 'PRODUCTION';
+  redirectUri: string;
+  logoutRedirectUri: string;
+}
+
+export interface WalletConnection {
+  address: string;
+  chainId: string;
+  isConnected: boolean;
+}
+
+export interface TransactionResult {
+  transactionHash: string;
+  status: 'pending' | 'confirmed' | 'failed';
+  blockNumber?: number;
+  gasUsed?: string;
+}
+
+export interface IMXAuthContextType extends IMXAuthState {
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+  connectWallet: () => Promise<string | null>;
+  sendTransaction: (transaction: any) => Promise<TransactionResult>;
+  refreshAuth: () => Promise<void>;
+}
+
+// Re-export types from IMX SDK for convenience
+// export type UserProfile = passport.UserProfile;
+// export type ProviderConfiguration = passport.ProviderConfiguration;

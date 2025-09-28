@@ -1,0 +1,167 @@
+// Settlement 21 Testing API Service
+const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:5000';
+
+export interface SettlementOverview {
+  settlementId: number;
+  settlementName: string;
+  totalCharacters: number;
+  totalBuildings: number;
+  charactersByRole: Record<string, number>;
+  buildingTypes: string[];
+  lastUpdateTime: string;
+}
+
+export interface CharacterInfo {
+  id: string;
+  name: string;
+  role: string;
+  currentPosition: { x: number; y: number };
+  currentActivity: string;
+  targetBuilding?: string;
+  actionQueueLength: number;
+  needs: {
+    hunger: number;
+    thirst: number;
+    energy: number;
+    social: number;
+  };
+  lastActionTime: string;
+}
+
+export interface ActivitySummary {
+  timestamp: string;
+  totalActiveCharacters: number;
+  buildingInteractions: Record<string, number>;
+  characterActivities: Record<string, number>;
+  averageQueueLength: number;
+  completedActionsLastHour: number;
+}
+
+export interface ProcessBehaviorsRequest {
+  timeMultiplier?: number;
+  batchSize?: number;
+  includeDebugLog?: boolean;
+}
+
+export interface ProcessBehaviorsResponse {
+  success: boolean;
+  processedCharacters: number;
+  createdActions: number;
+  processingTime: number;
+  debugLog?: string[];
+}
+
+export interface InteractionRequest {
+  characterIds?: string[];
+  buildingTypes?: string[];
+  maxInteractions?: number;
+}
+
+export interface InteractionResponse {
+  success: boolean;
+  createdInteractions: number;
+  affectedCharacters: string[];
+  processingTime: number;
+}
+
+class SettlementTestService {
+  private baseUrl = `${API_BASE_URL}/api/v1/settlement-test/settlement-21`;
+
+  async getSettlementOverview(): Promise<SettlementOverview> {
+    const response = await fetch(`${this.baseUrl}/overview`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch settlement overview: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async startInteractions(request: InteractionRequest = {}): Promise<InteractionResponse> {
+    const response = await fetch(`${this.baseUrl}/start-interactions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to start interactions: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async processBehaviors(request: ProcessBehaviorsRequest = {}): Promise<ProcessBehaviorsResponse> {
+    const response = await fetch(`${this.baseUrl}/process-behaviors`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to process behaviors: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async getActivitySummary(): Promise<ActivitySummary> {
+    const response = await fetch(`${this.baseUrl}/activity-summary`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch activity summary: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async getCharacterDetails(characterId: string): Promise<CharacterInfo> {
+    const response = await fetch(`${this.baseUrl}/character/${characterId}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch character details: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  async resetSettlement(): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseUrl}/reset`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to reset settlement: ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  // Utility method for polling activity updates
+  async pollActivitySummary(
+    callback: (summary: ActivitySummary) => void,
+    intervalMs: number = 5000
+  ): Promise<() => void> {
+    let isPolling = true;
+
+    const poll = async () => {
+      if (!isPolling) return;
+
+      try {
+        const summary = await this.getActivitySummary();
+        callback(summary);
+      } catch (error) {
+        console.error('Error polling activity summary:', error);
+      }
+
+      if (isPolling) {
+        setTimeout(poll, intervalMs);
+      }
+    };
+
+    // Start polling
+    poll();
+
+    // Return stop function
+    return () => {
+      isPolling = false;
+    };
+  }
+}
+
+export const settlementTestService = new SettlementTestService();

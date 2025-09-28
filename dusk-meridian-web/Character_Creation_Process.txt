@@ -1,0 +1,859 @@
+Dusk Meridian New Character Creation Process and Endpoints - DM??
+Overview
+
+
+  API Integration Requirements
+
+  1. API Endpoints to Integrate
+
+  NFT Validation:
+  - GET /api/nft/validate-nfts?walletAddress={address} - Validate user's
+  NFT ownership
+  - GET /api/nft/bonuses?walletAddress={address} - Get NFT tier bonuses       
+
+  Character Creation Configuration:
+  - GET /api/character/creation-config?walletAddress={address} - Get all      
+  creation options (traits, templates, skills)
+
+  Character Creation Process:
+  - POST /api/character/validate - Validate character configuration before    
+   creation
+  - POST /api/character/create - Create the character
+
+  Additional Data Endpoints:
+  - GET /api/geographicaltraits - Get all geographical traits
+  - GET /api/geographicaltraits/region/{regionName} - Get traits by region    
+  - GET /api/skilltemplates?requiredNFTTier={tier} - Get skill templates      
+  filtered by NFT tier
+  - GET /api/skilltemplates/category/{category} - Get templates by
+  category
+
+  2. TypeScript Interfaces Needed
+
+  // NFT Types
+  interface NFTValidationResponse {
+    isValid: boolean;
+    walletAddress: string;
+    ownedNFTs: NFTTier[];
+    maxCharacterSlots: number;
+    currentCharacterCount: number;
+    canCreateCharacter: boolean;
+    message?: string;
+  }
+
+  interface NFTTier {
+    tier: number;
+    count: number;
+    contractAddress: string;
+    tokenIds: string[];
+  }
+
+  interface NFTBonuses {
+    tier: number;
+    skillPointBonus: number;
+    attributePointBonus: number;
+    premiumTemplatesUnlocked: boolean;
+    exclusiveTraitsUnlocked: boolean;
+    additionalCustomizationOptions: boolean;
+  }
+
+  // Character Creation Types
+  interface CharacterCreationConfig {
+    availableRaces: Race[];
+    availableClasses: CharacterClass[];
+    geographicalTraits: GeographicalTrait[];
+    skillTemplates: SkillTemplate[];
+    skills: Skill[];
+    nftBonuses?: NFTBonuses;
+    characterSlots: CharacterSlots;
+  }
+
+  interface GeographicalTrait {
+    id: string;
+    name: string;
+    region: string;
+    description: string;
+    resistances: Resistance[];
+    bonuses: Bonus[];
+    isActive: boolean;
+  }
+
+  interface SkillTemplate {
+    templateId: string;
+    name: string;
+    description: string;
+    category: string;
+    preselectedSkillIds: string[];
+    statModifiers: Record<string, number>;
+    requiredNFTTier?: number;
+    isActive: boolean;
+    sortOrder: number;
+  }
+
+  interface CharacterCreationRequest {
+    name: string;
+    raceId: number;
+    classId: number;
+    geographicalTraitId?: string;
+    skillTemplateId?: string;
+    customSkillIds?: number[];
+    attributeDistribution: AttributeDistribution;
+    walletAddress: string;
+  }
+
+  interface AttributeDistribution {
+    strength: number;
+    dexterity: number;
+    constitution: number;
+    intelligence: number;
+    wisdom: number;
+    charisma: number;
+  }
+
+  3. React Components to Create
+
+  Main Container Component
+
+  // CharacterCreationContainer.tsx
+  // - Manages overall character creation state
+  // - Handles step navigation
+  // - Integrates with wallet/authentication
+  // - Calls NFT validation on mount
+
+  Step Components
+
+  // 1. NFTValidationStep.tsx
+  // - Display NFT validation status
+  // - Show available character slots
+  // - Display NFT tier bonuses
+  // - Block progression if no valid NFTs
+
+  // 2. BasicInfoStep.tsx
+  // - Character name input with validation
+  // - Race selection dropdown
+  // - Class selection dropdown
+  // - Real-time name availability checking
+
+  // 3. GeographicalTraitStep.tsx
+  // - Display available traits grouped by region
+  // - Show trait descriptions, resistances, and bonuses
+  // - Optional step - allow skipping
+  // - Filter traits based on NFT tier if needed
+
+  // 4. SkillConfigurationStep.tsx
+  // - Toggle between "Template" and "Custom" modes
+  // - Template mode: Show categorized skill templates with NFT tier
+  filtering
+  // - Custom mode: Skill tree/list for manual selection
+  // - Show skill descriptions and prerequisites
+
+  // 5. AttributeDistributionStep.tsx
+  // - Slider/input controls for each attribute
+  // - Display total points available (base + NFT bonuses)
+  // - Real-time point tracking
+  // - Apply stat modifiers from selected template
+
+  // 6. ReviewAndCreateStep.tsx
+  // - Summary of all selections
+  // - Character preview
+  // - Final validation before creation
+  // - Handle creation API call and loading states
+
+  Utility Components
+
+  // NFTBadge.tsx - Display NFT tier with styling
+  // SkillTemplateCard.tsx - Template display with preview
+  // GeographicalTraitCard.tsx - Trait display with bonuses
+  // AttributeSlider.tsx - Reusable attribute point slider
+  // CharacterPreview.tsx - Visual representation of character
+  // LoadingSpinner.tsx - Loading states during API calls
+
+  4. State Management
+
+  Use either React Context or a state management library (Redux Toolkit,      
+  Zustand) to manage:
+
+  interface CharacterCreationState {
+    // Current step
+    currentStep: number;
+
+    // API Data
+    nftValidation?: NFTValidationResponse;
+    creationConfig?: CharacterCreationConfig;
+
+    // User Selections
+    selectedRace?: Race;
+    selectedClass?: CharacterClass;
+    selectedGeographicalTrait?: GeographicalTrait;
+    selectedSkillTemplate?: SkillTemplate;
+    customSkillIds: number[];
+    attributeDistribution: AttributeDistribution;
+    characterName: string;
+
+    // UI State
+    isLoading: boolean;
+    errors: Record<string, string>;
+    mode: 'template' | 'custom'; // For skill selection
+  }
+
+  5. Key Implementation Notes
+
+  Authentication:
+  - Extract wallet address from JWT token claims (wallet_address claim)       
+  - Include JWT bearer token in all API requests
+  - Handle authentication errors and redirect to login
+
+  Validation:
+  - Implement client-side validation matching backend rules
+  - Call /api/character/validate before final creation
+  - Show real-time validation feedback
+
+  NFT Integration:
+  - Load NFT validation first - block progression if invalid
+  - Filter available options based on NFT tiers
+  - Display NFT bonuses prominently
+  - Handle cases where user has no NFTs (show appropriate message)
+
+  Error Handling:
+  - Implement retry logic for failed API calls
+  - Show user-friendly error messages
+  - Handle network timeouts gracefully
+
+  Performance:
+  - Cache API responses where appropriate
+  - Implement loading skeletons for better UX
+  - Lazy load skill/template data if large
+
+  6. Styling Recommendations
+
+  - Use a consistent design system
+  - Implement step indicator/progress bar
+  - Make NFT tiers visually distinct (colors, badges)
+  - Use cards/panels for grouped information
+  - Implement responsive design for mobile support
+  - Add animations for step transitions
+
+  7. Testing Considerations
+
+  - Unit tests for validation logic
+  - Integration tests for API calls
+  - E2E tests for complete character creation flow
+  - Test error scenarios (invalid NFTs, network failures)
+  - Test with different NFT tier configurations
+
+
+                                                                    
+The character creation system for Dusk Meridian leverages the PillarEngine system and requires players to own specific NFT tiers to create characters. Unlike traditional RPGs, there are no fixed classes - instead, players build their character through skill selection, either using templates or custom configurations.
+System Architecture
+Server Components
+Game Server: Handles character creation logic, validation, and persistence
+World Server: Manages character placement in the game world and initial spawn conditions
+NFT Service: Validates ownership of required NFT tiers
+Character Database: Stores character configurations and metadata
+NFT Requirements
+Tier Structure
+Tier 1 NFT (Required): Base character slot
+Tier 2 NFT (Required): Character customization access
+Tier 3 NFT (Optional): Premium features/bonuses
+Tier 4 NFT (Optional): Elite character options
+Backend API Endpoints
+1. NFT Validation
+// GET /api/character/validate-nfts
+public class ValidateNFTsResponse
+{
+    public bool CanCreateCharacter { get; set; }
+    public List<NFTTier> OwnedTiers { get; set; }
+    public List<string> MissingRequirements { get; set; }
+    public int AvailableCharacterSlots { get; set; }
+}
+
+public class NFTTier
+{
+    public int Tier { get; set; }
+    public string TokenId { get; set; }
+    public string ContractAddress { get; set; }
+    public Dictionary<string, object> Metadata { get; set; }
+}
+
+2. Character Creation Configuration
+// GET /api/character/creation-config
+public class CharacterCreationConfigResponse
+{
+    public List<GeographicalTrait> AvailableTraits { get; set; }
+    public List<SkillTemplate> Templates { get; set; }
+    public List<Skill> AllSkills { get; set; }
+    public List<string> PopularClassNames { get; set; }
+    public CharacterLimits Limits { get; set; }
+}
+
+public class GeographicalTrait
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string Region { get; set; }
+    public string Description { get; set; }
+    public List<Resistance> Resistances { get; set; }
+    public List<Bonus> Bonuses { get; set; }
+}
+
+public class SkillTemplate
+{
+    public string TemplateId { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public string Category { get; set; } // "Popular", "Specialized", "Custom"
+    public List<string> PreselectedSkillIds { get; set; }
+    public Dictionary<string, int> StatModifiers { get; set; }
+}
+
+3. Character Creation Process
+// POST /api/character/create
+public class CreateCharacterRequest
+{
+    public string CharacterName { get; set; }
+    public string SelectedTier1NFT { get; set; }
+    public string SelectedTier2NFT { get; set; }
+    public string SelectedTier3NFT { get; set; } // Optional
+    public string SelectedTier4NFT { get; set; } // Optional
+    
+    // Geographical Traits
+    public string SelectedGeographicalTraitId { get; set; }
+    
+    // Character Build
+    public CharacterBuildType BuildType { get; set; } // Template or Custom
+    public string SelectedTemplateId { get; set; } // If using template
+    public List<string> SelectedSkillIds { get; set; } // If custom
+    public string ClassName { get; set; } // Selected or custom-written
+    
+    // Appearance (stored as metadata)
+    public CharacterAppearance Appearance { get; set; }
+}
+
+public enum CharacterBuildType
+{
+    Template,
+    Custom
+}
+
+public class CharacterAppearance
+{
+    public string ModelType { get; set; }
+    public Dictionary<string, object> CustomizationData { get; set; }
+}
+
+// Response
+public class CreateCharacterResponse
+{
+    public bool Success { get; set; }
+    public string CharacterId { get; set; }
+    public string ErrorMessage { get; set; }
+    public CharacterSummary Summary { get; set; }
+}
+
+4. Character Validation
+// POST /api/character/validate
+public class ValidateCharacterRequest
+{
+    public string CharacterName { get; set; }
+    public List<string> SelectedSkillIds { get; set; }
+}
+
+public class ValidateCharacterResponse
+{
+    public bool IsValid { get; set; }
+    public List<string> Errors { get; set; }
+    public List<string> Warnings { get; set; }
+}
+
+Unity Frontend Implementation
+Character Creation Flow Manager
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Networking;
+using Newtonsoft.Json;
+
+public class CharacterCreationManager : MonoBehaviour
+{
+    [Header("UI Panels")]
+    [SerializeField] private GameObject nftValidationPanel;
+    [SerializeField] private GameObject geographicalTraitsPanel;
+    [SerializeField] private GameObject buildSelectionPanel;
+    [SerializeField] private GameObject skillSelectionPanel;
+    [SerializeField] private GameObject appearancePanel;
+    [SerializeField] private GameObject summaryPanel;
+    
+    private CreateCharacterRequest currentRequest;
+    private CharacterCreationConfigResponse config;
+    
+    public enum CreationStep
+    {
+        NFTValidation,
+        GeographicalTraits,
+        BuildSelection,
+        SkillSelection,
+        Appearance,
+        Summary,
+        Creating
+    }
+    
+    private CreationStep currentStep;
+    
+    async void Start()
+    {
+        await ValidateNFTs();
+    }
+    
+    private async Task ValidateNFTs()
+    {
+        using (UnityWebRequest request = UnityWebRequest.Get($"{GameConfig.ApiUrl}/api/character/validate-nfts"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {AuthManager.Token}");
+            
+            await request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonConvert.DeserializeObject<ValidateNFTsResponse>(request.downloadHandler.text);
+                
+                if (!response.CanCreateCharacter)
+                {
+                    ShowNFTRequirementsDialog(response.MissingRequirements);
+                    return;
+                }
+                
+                LoadCreationConfig();
+            }
+        }
+    }
+    
+    private async Task LoadCreationConfig()
+    {
+        using (UnityWebRequest request = UnityWebRequest.Get($"{GameConfig.ApiUrl}/api/character/creation-config"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {AuthManager.Token}");
+            
+            await request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                config = JsonConvert.DeserializeObject<CharacterCreationConfigResponse>(request.downloadHandler.text);
+                InitializeCreationFlow();
+            }
+        }
+    }
+    
+    public void NextStep()
+    {
+        if (!ValidateCurrentStep())
+            return;
+            
+        currentStep++;
+        UpdateUIForStep();
+    }
+    
+    public void PreviousStep()
+    {
+        if (currentStep > CreationStep.NFTValidation)
+        {
+            currentStep--;
+            UpdateUIForStep();
+        }
+    }
+    
+    private void UpdateUIForStep()
+    {
+        // Hide all panels
+        nftValidationPanel.SetActive(false);
+        geographicalTraitsPanel.SetActive(false);
+        buildSelectionPanel.SetActive(false);
+        skillSelectionPanel.SetActive(false);
+        appearancePanel.SetActive(false);
+        summaryPanel.SetActive(false);
+        
+        // Show current panel
+        switch (currentStep)
+        {
+            case CreationStep.NFTValidation:
+                nftValidationPanel.SetActive(true);
+                break;
+            case CreationStep.GeographicalTraits:
+                geographicalTraitsPanel.SetActive(true);
+                PopulateGeographicalTraits();
+                break;
+            case CreationStep.BuildSelection:
+                buildSelectionPanel.SetActive(true);
+                PopulateBuildOptions();
+                break;
+            case CreationStep.SkillSelection:
+                skillSelectionPanel.SetActive(true);
+                PopulateSkillOptions();
+                break;
+            case CreationStep.Appearance:
+                appearancePanel.SetActive(true);
+                InitializeAppearanceCustomization();
+                break;
+            case CreationStep.Summary:
+                summaryPanel.SetActive(true);
+                ShowCharacterSummary();
+                break;
+        }
+    }
+    
+    public async Task CreateCharacter()
+    {
+        currentStep = CreationStep.Creating;
+        ShowLoadingScreen("Creating your character...");
+        
+        string json = JsonConvert.SerializeObject(currentRequest);
+        
+        using (UnityWebRequest request = UnityWebRequest.Post($"{GameConfig.ApiUrl}/api/character/create", json, "application/json"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {AuthManager.Token}");
+            
+            await request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                var response = JsonConvert.DeserializeObject<CreateCharacterResponse>(request.downloadHandler.text);
+                
+                if (response.Success)
+                {
+                    OnCharacterCreated(response);
+                }
+                else
+                {
+                    ShowError(response.ErrorMessage);
+                }
+            }
+        }
+    }
+}
+
+Skill Selection UI Component
+public class SkillSelectionPanel : MonoBehaviour
+{
+    [SerializeField] private Transform skillGridContainer;
+    [SerializeField] private GameObject skillItemPrefab;
+    [SerializeField] private TMP_Text selectedCountText;
+    [SerializeField] private int maxSkills = 10;
+    
+    private List<string> selectedSkillIds = new List<string>();
+    private CharacterBuildType buildType;
+    
+    public void Initialize(List<Skill> availableSkills, CharacterBuildType type)
+    {
+        buildType = type;
+        ClearGrid();
+        
+        foreach (var skill in availableSkills)
+        {
+            var skillItem = Instantiate(skillItemPrefab, skillGridContainer);
+            var component = skillItem.GetComponent<SkillItemUI>();
+            component.Setup(skill, OnSkillToggled);
+        }
+        
+        UpdateSelectedCount();
+    }
+    
+    private void OnSkillToggled(string skillId, bool isSelected)
+    {
+        if (isSelected && selectedSkillIds.Count < maxSkills)
+        {
+            selectedSkillIds.Add(skillId);
+        }
+        else if (!isSelected)
+        {
+            selectedSkillIds.Remove(skillId);
+        }
+        
+        UpdateSelectedCount();
+    }
+    
+    private void UpdateSelectedCount()
+    {
+        selectedCountText.text = $"Selected: {selectedSkillIds.Count}/{maxSkills}";
+    }
+}
+
+Web Frontend Implementation (React/TypeScript)
+Character Creation Component
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+interface CharacterCreationProps {
+    apiUrl: string;
+    authToken: string;
+}
+
+export const CharacterCreation: React.FC<CharacterCreationProps> = ({ apiUrl, authToken }) => {
+    const [step, setStep] = useState<number>(0);
+    const [nftValidation, setNftValidation] = useState<ValidateNFTsResponse | null>(null);
+    const [config, setConfig] = useState<CharacterCreationConfigResponse | null>(null);
+    const [characterData, setCharacterData] = useState<CreateCharacterRequest>({
+        characterName: '',
+        selectedTier1NFT: '',
+        selectedTier2NFT: '',
+        selectedGeographicalTraitId: '',
+        buildType: 'Template',
+        selectedTemplateId: '',
+        selectedSkillIds: [],
+        className: '',
+        appearance: {}
+    });
+
+    useEffect(() => {
+        validateNFTs();
+    }, []);
+
+    const validateNFTs = async () => {
+        try {
+            const response = await axios.get(`${apiUrl}/api/character/validate-nfts`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            
+            if (response.data.canCreateCharacter) {
+                setNftValidation(response.data);
+                loadCreationConfig();
+            } else {
+                showNFTRequirements(response.data.missingRequirements);
+            }
+        } catch (error) {
+            console.error('NFT validation failed:', error);
+        }
+    };
+
+    const loadCreationConfig = async () => {
+        try {
+            const response = await axios.get(`${apiUrl}/api/character/creation-config`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            });
+            setConfig(response.data);
+        } catch (error) {
+            console.error('Failed to load creation config:', error);
+        }
+    };
+
+    const steps = [
+        { title: 'NFT Selection', component: <NFTSelectionStep /> },
+        { title: 'Geographic Traits', component: <GeographicTraitsStep /> },
+        { title: 'Build Type', component: <BuildSelectionStep /> },
+        { title: 'Skills', component: <SkillSelectionStep /> },
+        { title: 'Appearance', component: <AppearanceStep /> },
+        { title: 'Review', component: <ReviewStep /> }
+    ];
+
+    const handleNext = () => {
+        if (validateCurrentStep()) {
+            setStep(step + 1);
+        }
+    };
+
+    const handleBack = () => {
+        if (step > 0) {
+            setStep(step - 1);
+        }
+    };
+
+    const createCharacter = async () => {
+        try {
+            const response = await axios.post(
+                `${apiUrl}/api/character/create`,
+                characterData,
+                { headers: { Authorization: `Bearer ${authToken}` } }
+            );
+            
+            if (response.data.success) {
+                onCharacterCreated(response.data);
+            }
+        } catch (error) {
+            console.error('Character creation failed:', error);
+        }
+    };
+
+    return (
+        <div className="character-creation-container">
+            <div className="progress-bar">
+                {steps.map((s, index) => (
+                    <div 
+                        key={index} 
+                        className={`progress-step ${index <= step ? 'active' : ''}`}
+                    >
+                        {s.title}
+                    </div>
+                ))}
+            </div>
+            
+            <div className="step-content">
+                {steps[step].component}
+            </div>
+            
+            <div className="navigation-buttons">
+                {step > 0 && (
+                    <button onClick={handleBack}>Previous</button>
+                )}
+                {step < steps.length - 1 ? (
+                    <button onClick={handleNext}>Next</button>
+                ) : (
+                    <button onClick={createCharacter}>Create Character</button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+Data Models
+Character Class Templates
+public class CharacterClassTemplate
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string Category { get; set; } // "Warrior", "Mage", "Rogue", "Hybrid", etc.
+    public string Description { get; set; }
+    public List<string> CoreSkillIds { get; set; }
+    public Dictionary<string, int> BaseStats { get; set; }
+    public List<string> SuggestedGeographicalTraits { get; set; }
+}
+
+// Popular templates examples
+public static class PopularTemplates
+{
+    public static readonly List<string> Templates = new List<string>
+    {
+        "Blade Master",
+        "Elemental Wizard",
+        "Shadow Assassin",
+        "Battle Cleric",
+        "Ranger Scout",
+        "Necromancer",
+        "Paladin",
+        "Bard",
+        "Alchemist",
+        "Beast Tamer"
+    };
+}
+
+Geographical Traits System
+public class GeographicalRegion
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public Climate Climate { get; set; }
+    public List<AvailableTrait> Traits { get; set; }
+}
+
+public class AvailableTrait
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string Lore { get; set; }
+    public List<Effect> Effects { get; set; }
+}
+
+public class Effect
+{
+    public EffectType Type { get; set; }
+    public string Target { get; set; }
+    public float Value { get; set; }
+    public string Description { get; set; }
+}
+
+public enum EffectType
+{
+    Resistance,
+    Weakness,
+    Bonus,
+    Penalty,
+    Immunity
+}
+
+Validation Rules
+Character Name Validation
+Length: 3-20 characters
+Allowed characters: Letters, numbers, spaces, hyphens
+No offensive words (checked against filter list)
+Unique across the game world
+Skill Selection Rules
+Minimum skills: 3
+Maximum skills: 10 (or based on NFT tier bonuses)
+Some skills may have prerequisites
+Template selections automatically meet requirements
+NFT-Based Bonuses
+public class NFTBonuses
+{
+    public static Dictionary<int, CharacterBonus> TierBonuses = new Dictionary<int, CharacterBonus>
+    {
+        { 3, new CharacterBonus { ExtraSkillSlots = 2, StatBonus = 5 } },
+        { 4, new CharacterBonus { ExtraSkillSlots = 5, StatBonus = 10, UnlocksPremiumTemplates = true } }
+    };
+}
+
+Error Handling
+Common Error Scenarios
+NFT Ownership Failure: Player lacks required NFT tiers
+Name Already Taken: Character name exists in database
+Invalid Skill Combination: Selected skills have conflicts
+Server Timeout: Long creation process needs retry logic
+Blockchain Verification Failure: NFT ownership cannot be verified
+Error Response Format
+public class ErrorResponse
+{
+    public string ErrorCode { get; set; }
+    public string Message { get; set; }
+    public Dictionary<string, object> Details { get; set; }
+    public List<string> SuggestedActions { get; set; }
+}
+
+Security Considerations
+NFT Verification: Always verify NFT ownership server-side
+Rate Limiting: Limit character creation attempts per account
+Input Sanitization: Validate all user inputs
+Session Management: Ensure creation process is atomic
+Audit Logging: Log all character creation attempts
+Database Schema
+-- Characters table
+CREATE TABLE Characters (
+    Id UNIQUEIDENTIFIER PRIMARY KEY,
+    AccountId UNIQUEIDENTIFIER NOT NULL,
+    Name NVARCHAR(20) NOT NULL UNIQUE,
+    ClassName NVARCHAR(50),
+    GeographicalTraitId VARCHAR(50),
+    BuildType VARCHAR(20),
+    TemplateId VARCHAR(50),
+    CreatedAt DATETIME2 NOT NULL,
+    LastPlayed DATETIME2,
+    IsActive BIT NOT NULL DEFAULT 1,
+    FOREIGN KEY (AccountId) REFERENCES Accounts(Id)
+);
+
+-- Character NFTs mapping
+CREATE TABLE CharacterNFTs (
+    CharacterId UNIQUEIDENTIFIER,
+    Tier INT NOT NULL,
+    TokenId VARCHAR(100) NOT NULL,
+    ContractAddress VARCHAR(42) NOT NULL,
+    FOREIGN KEY (CharacterId) REFERENCES Characters(Id)
+);
+
+-- Character Skills
+CREATE TABLE CharacterSkills (
+    CharacterId UNIQUEIDENTIFIER,
+    SkillId VARCHAR(50),
+    Level INT DEFAULT 1,
+    Experience INT DEFAULT 0,
+    FOREIGN KEY (CharacterId) REFERENCES Characters(Id),
+    PRIMARY KEY (CharacterId, SkillId)
+);
+
+Testing Checklist
+[ ] NFT validation with various tier combinations
+[ ] Character name uniqueness validation
+[ ] Template selection and skill assignment
+[ ] Custom skill selection within limits
+[ ] Geographical trait application
+[ ] Error handling for all failure scenarios
+[ ] UI responsiveness during creation
+[ ] Database transaction rollback on failure
+[ ] Cross-platform consistency (Web/Unity)
+

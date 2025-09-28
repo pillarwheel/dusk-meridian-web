@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(cat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run typecheck:*)",
+      "Read(//g/Code/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,5 +1,9 @@
 import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { SettlementView } from '@/components/settlement/SettlementView';
+import { settlementApi } from '@/api/endpoints/settlement';
+import { QUERY_KEYS } from '@/utils/constants';
 
 const mockSettlement: any = {
   id: 'settlement_001',
@@ -246,6 +250,28 @@ const mockSettlement: any = {
 };
 
 export const Settlement: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const settlementId = id ? parseInt(id, 10) : 0;
+
+  const { data: settlement, isLoading, error } = useQuery({
+    queryKey: QUERY_KEYS.SETTLEMENT(settlementId),
+    queryFn: () => settlementApi.getSettlement(settlementId),
+    enabled: !!settlementId
+  });
+
+  const { data: population } = useQuery({
+    queryKey: QUERY_KEYS.SETTLEMENT_POPULATION(settlementId),
+    queryFn: () => settlementApi.getSettlementPopulation(settlementId),
+    enabled: !!settlementId
+  });
+
+  const { data: buildings } = useQuery({
+    queryKey: QUERY_KEYS.SETTLEMENT_BUILDINGS(settlementId),
+    queryFn: () => settlementApi.getSettlementBuildings(settlementId),
+    enabled: !!settlementId
+  });
+
   const handleEnterBuilding = (building: any) => {
     console.log('Entering building:', building.name);
   };
@@ -266,16 +292,165 @@ export const Settlement: React.FC = () => {
     console.log('Opening settlement map');
   };
 
+  if (!settlementId) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Invalid Settlement</h2>
+          <button
+            onClick={() => navigate('/settlements')}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Back to Settlements
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-red-600">
+          <h2 className="text-2xl font-bold mb-4">Error Loading Settlement</h2>
+          <p className="mb-4">Failed to load settlement data. Please try again later.</p>
+          <button
+            onClick={() => navigate('/settlements')}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Back to Settlements
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settlement) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Settlement Not Found</h2>
+          <p className="mb-4">The requested settlement could not be found.</p>
+          <button
+            onClick={() => navigate('/settlements')}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Back to Settlements
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <SettlementView
-        settlement={mockSettlement}
-        onEnterBuilding={handleEnterBuilding}
-        onManageGarrison={handleManageGarrison}
-        onTrade={handleTrade}
-        onRecruitUnits={handleRecruitUnits}
-        onViewMap={handleViewMap}
-      />
+      <div className="mb-4">
+        <button
+          onClick={() => navigate('/settlements')}
+          className="text-blue-500 hover:text-blue-700 mb-4"
+        >
+          ← Back to Settlements
+        </button>
+      </div>
+
+      {/* Overview Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{settlement.name}</h1>
+            <p className="text-gray-600">Settlement ID: {settlementId}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Population</h3>
+            <p className="text-2xl font-bold text-gray-900">
+              {population?.total?.toLocaleString() || 'Loading...'}
+            </p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Buildings</h3>
+            <p className="text-2xl font-bold text-gray-900">
+              {buildings?.length || 'Loading...'}
+            </p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
+            <p className="text-2xl font-bold text-green-600">Active</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Population Section */}
+      {population && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Population</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {population.characters.map((character) => (
+              <div key={character.character_id} className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900">{character.name}</h4>
+                <p className="text-sm text-gray-600">Level {character.level} {character.class}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Buildings Section */}
+      {buildings && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Buildings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {buildings.map((building) => (
+              <div key={building.building_id} className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-medium text-gray-900">{building.name}</h4>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    building.isActive && !building.is_destroyed && !building.is_damaged
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {building.is_destroyed ? 'Destroyed' :
+                     building.is_damaged ? 'Damaged' :
+                     building.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">Type: {building.type}</p>
+                <p className="text-sm text-gray-600">Capacity: {building.capacity}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Position: ({building.x_coordinate}, {building.y_coordinate}, {building.z_coordinate})
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Placeholder sections for Production and Overview as requested */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Production</h2>
+          <p className="text-gray-600">Production data will be implemented here.</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Overview</h2>
+          <p className="text-gray-600">Additional overview data will be implemented here.</p>
+        </div>
+      </div>
     </div>
   );
 };

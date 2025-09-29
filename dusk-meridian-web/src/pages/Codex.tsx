@@ -7,6 +7,9 @@ import { cn } from '@/utils/cn';
 // Inline types to avoid import issues
 type CodexCategory = 'mechanics' | 'geography' | 'factions' | 'skills' | 'spells' | 'settlements';
 
+// Array of category values for iteration
+const codexCategories: CodexCategory[] = ['mechanics', 'geography', 'factions', 'skills', 'spells', 'settlements'];
+
 interface CodexEntry {
   id: string;
   title: string;
@@ -256,7 +259,7 @@ export const Codex: React.FC = () => {
 
       {/* Category Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Object.values(CodexCategory).map(category => {
+        {codexCategories.map(category => {
           const Icon = categoryIcons[category];
           return (
             <button
@@ -539,7 +542,7 @@ export const Codex: React.FC = () => {
           <span>Overview</span>
         </button>
 
-        {Object.values(CodexCategory).map(category => {
+        {codexCategories.map(category => {
           const Icon = categoryIcons[category];
           return (
             <button

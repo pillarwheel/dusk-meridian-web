@@ -20,7 +20,7 @@ interface ApiError {
 }
 
 class ApiClient {
-  private instance: AxiosInstance;
+  public instance: AxiosInstance;
   private authToken: string | null = null;
 
   constructor() {

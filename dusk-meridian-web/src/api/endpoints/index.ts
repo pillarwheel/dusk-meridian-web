@@ -4,3 +4,4 @@ export * from './marketplace';
 export * from './quest';
 export * from './world';
 export * from './gameserver';
+export * from './settlement';

@@ -1,6 +1,6 @@
 export const API_ENDPOINTS = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:5105/api/v1',
-  BASE_URL_HTTPS: import.meta.env.VITE_API_URL_HTTPS || 'https://localhost:5001/api/v1',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:5105/api',
+  BASE_URL_HTTPS: import.meta.env.VITE_API_URL_HTTPS || 'https://localhost:5001/api',
   SIGNALR_HUB_URL: import.meta.env.VITE_SIGNALR_HUB_URL || 'wss://localhost:5001/worldhub',
   // Character API uses /api/ without version prefix
   CHARACTER_BASE_URL: 'http://localhost:5105/api',
@@ -120,6 +120,7 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   PROFILE: '/profile',
+  SETTLEMENTS: '/settlements',
   SETTLEMENT: '/settlement',
   SETTLEMENT_TESTING: '/settlement/testing',
 } as const;
@@ -127,7 +128,10 @@ export const ROUTES = {
 export const QUERY_KEYS = {
   WORLDS: ['worlds'],
   WORLD: (id: number) => ['world', id],
-  SETTLEMENTS: (worldId: number) => ['settlements', worldId],
+  SETTLEMENTS: ['settlements'],
+  SETTLEMENT: (id: number) => ['settlement', id],
+  SETTLEMENT_POPULATION: (id: number) => ['settlement', id, 'population'],
+  SETTLEMENT_BUILDINGS: (id: number) => ['settlement', id, 'buildings'],
   CHARACTERS: ['characters'],
   CHARACTER: (id: string) => ['character', id],
   MARKETPLACE_LISTINGS: ['marketplace', 'listings'],

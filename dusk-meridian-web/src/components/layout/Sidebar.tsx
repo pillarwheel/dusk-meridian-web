@@ -27,7 +27,7 @@ interface NavItem {
 const navigation: NavItem[] = [
   { name: 'Home', href: ROUTES.HOME, icon: Home },
   { name: 'World Map', href: ROUTES.MAP, icon: Map },
-  { name: 'Settlement', href: ROUTES.SETTLEMENT, icon: Castle },
+  { name: 'Settlements', href: ROUTES.SETTLEMENTS, icon: Castle },
   { name: 'Marketplace', href: ROUTES.MARKETPLACE, icon: ShoppingBag },
   { name: 'Dashboard', href: ROUTES.DASHBOARD, icon: BarChart3 },
   { name: 'Character', href: ROUTES.CHARACTER, icon: User },

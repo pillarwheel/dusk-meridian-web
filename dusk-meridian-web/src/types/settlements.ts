@@ -1,11 +1,5 @@
-// Clean version of settlement types
+// Settlement types - moved to src/types to avoid module resolution issues
 
-// Basic type definitions first
-export type SettlementFaction = 'player' | 'ally' | 'neutral' | 'enemy' | 'npc';
-export type SettlementStatus = 'peaceful' | 'alert' | 'under_siege' | 'expanding' | 'abandoned';
-export type BuildingStatus = 'active' | 'inactive' | 'under_construction' | 'upgrading' | 'damaged' | 'destroyed' | 'abandoned';
-
-// Simple interfaces for API responses
 export interface SettlementListItem {
   settlement_id: number;
   name: string;
@@ -23,14 +17,36 @@ export interface SettlementListItem {
   public_view: boolean;
 }
 
-// Simplified Settlement interface for now
 export interface Settlement {
   id: string;
   name: string;
-  faction: SettlementFaction;
-  status: SettlementStatus;
+  status: string;
   owner: string;
   founded: Date;
   lastUpdated: Date;
   publicView?: boolean;
+}
+
+export interface SettlementPopulation {
+  total: number;
+  characters: Array<{
+    character_id: number;
+    name: string;
+    level: number;
+    class: string;
+  }>;
+}
+
+export interface SettlementBuilding {
+  building_id: number;
+  settlement_id: number;
+  name: string;
+  type: string;
+  x_coordinate: number;
+  y_coordinate: number;
+  z_coordinate: number;
+  is_destroyed: boolean;
+  is_damaged: boolean;
+  capacity: number;
+  isActive: boolean;
 }

@@ -71,6 +71,14 @@ class IMXPassportService {
 
   private initialize() {
     try {
+      // Only initialize if we have valid configuration
+      if (!this.config.clientId || !this.config.publishableKey ||
+          this.config.clientId === 'your_imx_client_id_here' ||
+          this.config.publishableKey === 'your_imx_publishable_key_here') {
+        console.warn('IMX Passport configuration incomplete. Running in demo mode without blockchain features.');
+        return;
+      }
+
       // Get chain ID from environment
       const chainId = import.meta.env.VITE_CHAIN_ID || '13371';
 
@@ -96,12 +104,14 @@ class IMXPassportService {
       });
     } catch (error) {
       console.error('Failed to initialize IMX Passport:', error);
+      console.warn('App will continue without blockchain features');
     }
   }
 
   async login(): Promise<IMXUser | null> {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {
@@ -137,7 +147,8 @@ class IMXPassportService {
 
   async loginCallback(): Promise<void> {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {
@@ -150,7 +161,8 @@ class IMXPassportService {
 
   async logout(): Promise<void> {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {
@@ -163,7 +175,8 @@ class IMXPassportService {
 
   async connectWallet(): Promise<string | null> {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {
@@ -188,7 +201,8 @@ class IMXPassportService {
 
   async getWalletAddress(): Promise<string | null> {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {
@@ -209,7 +223,8 @@ class IMXPassportService {
 
   async getProvider() {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {
@@ -225,7 +240,8 @@ class IMXPassportService {
 
   async sendTransaction(transaction: any): Promise<TransactionResult> {
     if (!this.passportInstance) {
-      throw new Error('Passport not initialized');
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
     }
 
     try {

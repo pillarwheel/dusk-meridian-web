@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Users, Building, Shield, Coins } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Building, Shield, Coins, Map } from 'lucide-react';
 import { settlementApi } from '@/api/endpoints/settlement';
+import { SettlementMap } from '@/components/map/SettlementMap';
 
 interface Settlement {
   settlementId: number;
@@ -38,8 +39,18 @@ interface SettlementBuilding {
 
 interface SettlementPopulation {
   total: number;
-  characters: Array<{
-    character_id: number;
+  byBuilding: Array<{
+    buildingId: number;
+    buildingName: string;
+    characters: Array<{
+      characterId: number;
+      name: string;
+      level: number;
+      class: string;
+    }>;
+  }>;
+  outdoor: Array<{
+    characterId: number;
     name: string;
     level: number;
     class: string;
@@ -54,7 +65,7 @@ export const SettlementDetail: React.FC = () => {
   const [population, setPopulation] = useState<SettlementPopulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'buildings' | 'population'>('overview');
+  const [activeTab, setActiveTab] = useState<'map' | 'overview' | 'buildings' | 'population'>('map');
 
   useEffect(() => {
     if (id) {
@@ -141,34 +152,51 @@ export const SettlementDetail: React.FC = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => navigate('/settlements')}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
+    <div className="h-full flex flex-col">
+      {/* Compact Header */}
+      <div className="bg-card border-b border-border px-6 py-3">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between">
+            {/* Left: Back button and settlement name */}
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{settlement.name}</h1>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${typeColor[settlement.settlementType]}`}>
-                {settlement.settlementType}
-              </span>
+              <button
+                onClick={() => navigate('/settlements')}
+                className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold">{settlement.name}</h1>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColor[settlement.settlementType]}`}>
+                  {settlement.settlementType}
+                </span>
+              </div>
             </div>
-            <p className="text-muted-foreground">
-              {settlement.subRegion && `${settlement.subRegion} • `}
-              Coordinates: ({settlement.xCoordinate.toFixed(1)}, {settlement.yCoordinate.toFixed(1)})
-            </p>
-          </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="border-b border-border mb-6">
-          <nav className="flex space-x-8">
+            {/* Right: Quick stats */}
+            <div className="flex items-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{settlement.population.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{buildings.length}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Coins className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{settlement.tradeImportance}/10</span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                ({settlement.xCoordinate.toFixed(0)}, {settlement.yCoordinate.toFixed(0)})
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <nav className="flex space-x-6 mt-3">
             {[
+              { id: 'map', label: 'Map View', icon: Map },
               { id: 'overview', label: 'Overview', icon: MapPin },
               { id: 'buildings', label: `Buildings (${buildings.length})`, icon: Building },
               { id: 'population', label: `Population (${population?.total || 0})`, icon: Users },
@@ -176,22 +204,32 @@ export const SettlementDetail: React.FC = () => {
               <button
                 key={id}
                 onClick={() => setActiveTab(id as any)}
-                className={`flex items-center gap-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`flex items-center gap-2 pb-2 px-1 border-b-2 font-medium text-xs transition-colors ${
                   activeTab === id
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 {label}
               </button>
             ))}
           </nav>
         </div>
+      </div>
 
-        {/* Tab Content */}
+      {/* Tab Content */}
+      <div className="flex-1 overflow-auto">{activeTab === 'map' && (
+          <div className="h-full">
+            <SettlementMap
+              settlementId={settlement.settlementId}
+              settlementName={settlement.name}
+            />
+          </div>
+        )}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="p-6">
+            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-card p-6 rounded-lg border border-border">
               <div className="flex items-center gap-3 mb-4">
                 <Users className="w-5 h-5 text-blue-500" />
@@ -255,10 +293,12 @@ export const SettlementDetail: React.FC = () => {
               </p>
             </div>
           </div>
+          </div>
         )}
 
         {activeTab === 'buildings' && (
-          <div className="space-y-4">
+          <div className="p-6">
+            <div className="max-w-6xl mx-auto space-y-4">
             {buildings.length === 0 ? (
               <div className="text-center py-12">
                 <Building className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -301,11 +341,13 @@ export const SettlementDetail: React.FC = () => {
               </div>
             )}
           </div>
+          </div>
         )}
 
         {activeTab === 'population' && (
-          <div className="space-y-6">
-            {population && population.characters.length > 0 ? (
+          <div className="p-6">
+            <div className="max-w-6xl mx-auto space-y-6">
+            {population && population.total > 0 ? (
               <>
                 <div className="bg-card p-4 rounded-lg border border-border">
                   <h3 className="font-semibold mb-2">Population Overview</h3>
@@ -313,23 +355,64 @@ export const SettlementDetail: React.FC = () => {
                   <p className="text-sm text-muted-foreground">Total characters in settlement</p>
                 </div>
 
-                <div>
-                  <h3 className="font-semibold mb-4">Characters</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {population.characters.map((character) => (
-                      <div
-                        key={character.character_id}
-                        className="bg-card p-4 rounded-lg border border-border hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => navigate(`/character/${character.character_id}`)}
-                      >
-                        <h4 className="font-medium">{character.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Level {character.level} {character.class}
-                        </p>
-                      </div>
-                    ))}
+                {population.byBuilding.length === 0 && population.outdoor.length === 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Debug:</strong> Population total is {population.total}, but no character details are available.
+                      Check browser console for API response details.
+                    </p>
                   </div>
-                </div>
+                )}
+
+                {/* Characters grouped by building */}
+                {population.byBuilding.map((buildingGroup) => (
+                  <div key={buildingGroup.buildingId} className="space-y-3">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <Building className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold text-lg">{buildingGroup.buildingName}</h3>
+                      <span className="text-sm text-muted-foreground">({buildingGroup.characters.length})</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {buildingGroup.characters.map((character) => (
+                        <div
+                          key={character.characterId}
+                          className="bg-card p-3 rounded-lg border border-border hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => navigate(`/character/${character.characterId}`)}
+                        >
+                          <h4 className="font-medium text-sm">{character.name}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Level {character.level} {character.class}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Outdoor characters */}
+                {population.outdoor.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 border-b border-border pb-2">
+                      <MapPin className="w-5 h-5 text-green-600" />
+                      <h3 className="font-semibold text-lg">Outside</h3>
+                      <span className="text-sm text-muted-foreground">({population.outdoor.length})</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {population.outdoor.map((character) => (
+                        <div
+                          key={character.characterId}
+                          className="bg-card p-3 rounded-lg border border-border hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => navigate(`/character/${character.characterId}`)}
+                        >
+                          <h4 className="font-medium text-sm">{character.name}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            Level {character.level} {character.class}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-12">
@@ -338,6 +421,7 @@ export const SettlementDetail: React.FC = () => {
                 <p className="text-muted-foreground">Population information is not available for this settlement.</p>
               </div>
             )}
+          </div>
           </div>
         )}
       </div>

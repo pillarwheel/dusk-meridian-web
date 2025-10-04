@@ -97,15 +97,141 @@ export const settlementApi = {
 
   async getSettlementPopulation(settlementId: number): Promise<{
     total: number;
-    characters: Array<{
-      character_id: number;
+    byBuilding: Array<{
+      buildingId: number;
+      buildingName: string;
+      characters: Array<{
+        characterId: number;
+        name: string;
+        level: number;
+        class: string;
+      }>;
+    }>;
+    outdoor: Array<{
+      characterId: number;
       name: string;
       level: number;
       class: string;
     }>;
   }> {
-    const response = await apiClient.get(`/settlements/${settlementId}/population`);
-    return response.data;
+    console.log('👥 getSettlementPopulation: Fetching detailed character data for settlement', settlementId);
+
+    // Use the detailed characters endpoint which includes building_id
+    const [charactersData, buildingsData] = await Promise.all([
+      this.getSettlementCharacters(settlementId, false),
+      this.getSettlementBuildings(settlementId)
+    ]);
+
+    console.log('👥 Got', charactersData.length, 'characters and', buildingsData.length, 'buildings');
+
+    // Create a map of building IDs to building names
+    const buildingMap = new Map(
+      buildingsData.map(b => [b.buildingId, b.name])
+    );
+
+    // Group characters by building_id
+    const grouped = new Map<number, Array<any>>();
+    const outdoor: Array<any> = [];
+
+    charactersData.forEach((char) => {
+      const character = {
+        characterId: char.characterId,
+        name: char.name,
+        level: char.level,
+        class: char.class
+      };
+
+      if (char.buildingId) {
+        if (!grouped.has(char.buildingId)) {
+          grouped.set(char.buildingId, []);
+        }
+        grouped.get(char.buildingId)!.push(character);
+      } else {
+        outdoor.push(character);
+      }
+    });
+
+    // Convert map to array and add building names
+    const byBuilding = Array.from(grouped.entries())
+      .map(([buildingId, chars]) => ({
+        buildingId,
+        buildingName: buildingMap.get(buildingId) || `Building ${buildingId}`,
+        characters: chars
+      }))
+      .sort((a, b) => a.buildingName.localeCompare(b.buildingName));
+
+    console.log('👥 Grouped into', byBuilding.length, 'buildings and', outdoor.length, 'outdoor characters');
+
+    return {
+      total: charactersData.length,
+      byBuilding,
+      outdoor
+    };
+  },
+
+  async getSettlementCharacters(settlementId: number, outdoorOnly: boolean = false): Promise<Array<{
+    characterId: number;
+    name: string;
+    class: string;
+    level: number;
+    xCoordinate: number;
+    yCoordinate: number;
+    zCoordinate: number;
+    currentAction?: string;
+    health: { current: number; max: number };
+    isPlayer: boolean;
+    buildingId?: number;
+  }>> {
+    console.log('👥 getSettlementCharacters: Fetching characters for settlement', settlementId, 'outdoor only:', outdoorOnly);
+
+    const url = outdoorOnly
+      ? `/settlements/${settlementId}/characters/outdoor`
+      : `/settlements/${settlementId}/characters/detailed`;
+
+    try {
+      const response = await apiClient.get(url);
+
+      // Handle outdoor endpoint response format
+      if (outdoorOnly && response.characters) {
+        const data = response.characters;
+        return data.map((char: any) => ({
+          characterId: char.id,
+          name: char.name,
+          class: char.characterClass || 'Unknown',
+          level: char.level || 1,
+          xCoordinate: char.x,
+          yCoordinate: char.y,
+          zCoordinate: char.z,
+          currentAction: char.activityType,
+          health: { current: 100, max: 100 },
+          isPlayer: true,
+          buildingId: null
+        }));
+      }
+
+      // Handle detailed endpoint response format
+      const characters = response.data || response;
+      if (!characters || !Array.isArray(characters)) {
+        return [];
+      }
+
+      return characters.map((char: any) => ({
+        characterId: char.id,
+        name: char.name,
+        class: char.characterClass || 'Unknown',
+        level: char.level || 1,
+        xCoordinate: char.x,
+        yCoordinate: char.y,
+        zCoordinate: char.z,
+        currentAction: char.activityType,
+        health: { current: 100, max: 100 },
+        isPlayer: true,
+        buildingId: char.buildingId
+      }));
+    } catch (err) {
+      console.error('Failed to fetch settlement characters:', err);
+      return [];
+    }
   },
 
   async getSettlementBuildings(settlementId: number): Promise<Array<{

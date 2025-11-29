@@ -1,0 +1,29 @@
+  async getCharacter(characterId: string): Promise<CharacterTypes.Character | null> {
+    try {
+      console.log('🔍 Fetching character by ID:', characterId);
+
+      // Try direct endpoint first (for any character, not just owned ones)
+      try {
+        const response = await characterApiClient.get<CharacterTypes.Character>(`/character/${characterId}`);
+        console.log('✅ Character found via direct endpoint:', response.data);
+        return response.data;
+      } catch (directError: any) {
+        if (directError?.response?.status === 404) {
+          console.log('❌ Character not found (404)');
+          return null;
+        }
+
+        // Fallback to my-characters if endpoint not implemented
+        console.log('⚠️ Falling back to my-characters');
+        const allCharacters = await this.getCharacters();
+        const charactersArray = allCharacters?.characters || allCharacters || [];
+        const character = charactersArray.find(c =>
+          String(c.id) === String(characterId) || c.id === characterId
+        );
+        return character || null;
+      }
+    } catch (error) {
+      console.error('Failed to get character:', error);
+      return null;
+    }
+  },

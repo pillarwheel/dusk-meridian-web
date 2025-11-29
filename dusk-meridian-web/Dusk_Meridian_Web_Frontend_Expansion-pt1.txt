@@ -1,0 +1,880 @@
+I'll search the project knowledge to understand the existing React/TypeScript frontend structure and Dusk Meridian's game mechanics to create comprehensive instructions for Claude Code.Based on the project knowledge, I'll create comprehensive instructions for Claude Code to expand the Dusk Meridian React/TypeScript web frontend with full MMORPG functionality.
+
+---
+
+# **Claude Code Instructions: Dusk Meridian Web Frontend Expansion**
+
+## **0) Project Context and Current State**
+
+**Existing Foundation:**
+- React/TypeScript web application with world map display
+- Character data visualization
+- Basic UI framework established
+- Axios-based API client
+- Auth integration with Immutable Passport
+
+**Product:** Dusk Meridian, a persistent MMORPG with server-authoritative simulation, text-based MMORPG inspired interface, and comprehensive character/settlement management systems.
+
+**Backend:** .NET 8 ASP.NET Core REST APIs with WebSocket/SignalR for real-time updates.
+
+**Blockchain:** Immutable zkEVM integration for NFT-based character creation and authentication.
+
+**Core Philosophy:** Characters continue autonomous behavior when players offline (Living Character System). Web interface enables management from any device - phones, tablets, work computers.
+
+---
+
+## **1) High-Level Architecture Goals**
+
+Create a comprehensive text-based MMORPG web interface that enables:
+
+1. **Character Management:** Full lifecycle from creation to progression
+2. **Action Queue System:** Kenshi/RimWorld-style task management with drag-drop priority
+3. **Military Orders:** Mount & Blade II-inspired command interface for formations, patrols, attacks
+4. **Settlement Management:** View/manage buildings, resources, populations, defenses
+5. **World Map Interaction:** Character movement, settlement navigation, faction territories
+6. **Real-Time Updates:** WebSocket integration for live world state changes
+7. **Inventory & Equipment:** Drag-drop item management with tooltips
+8. **Crafting & Production:** Queue-based crafting with skill checks
+9. **Social Systems:** Party/caravan management, messaging, faction diplomacy
+10. **Combat Interface:** Turn-based or real-time combat displays
+
+---
+
+## **2) File Structure to Create**
+
+```
+src/
+├── api/
+│   ├── apiClient.ts                 # Axios wrapper with auth
+│   ├── endpoints/
+│   │   ├── characterApi.ts          # Character CRUD, movement, stats
+│   │   ├── actionQueueApi.ts        # Action queue management
+│   │   ├── militaryOrdersApi.ts     # Military commands
+│   │   ├── settlementApi.ts         # Settlement data & management
+│   │   ├── inventoryApi.ts          # Inventory & equipment
+│   │   ├── craftingApi.ts           # Crafting & production
+│   │   ├── questApi.ts              # Quest system
+│   │   ├── marketApi.ts             # Trading & economy
+│   │   ├── partyApi.ts              # Party/caravan management
+│   │   └── combatApi.ts             # Combat actions
+│   └── websocket/
+│       └── gameHub.ts               # SignalR WebSocket client
+├── components/
+│   ├── character/
+│   │   ├── CharacterSheet.tsx       # Full character stats display
+│   │   ├── CharacterSelector.tsx    # Multi-character switcher
+│   │   ├── CharacterCreation.tsx    # NFT-based creation flow
+│   │   └── SkillsPanel.tsx          # Skills & professions
+│   ├── actionQueue/
+│   │   ├── ActionQueuePanel.tsx     # Draggable action queue
+│   │   ├── ActionItem.tsx           # Individual action component
+│   │   └── ActionTemplates.tsx      # Save/load action templates
+│   ├── military/
+│   │   ├── MilitaryOrdersPanel.tsx  # Order creation interface
+│   │   ├── OrdersList.tsx           # Active orders display
+│   │   ├── TroopStatus.tsx          # Garrison & troop counts
+│   │   └── FormationEditor.tsx      # Formation configuration
+│   ├── settlement/
+│   │   ├── SettlementView.tsx       # Settlement overview
+│   │   ├── BuildingsList.tsx        # Buildings & upgrades
+│   │   ├── ResourcesPanel.tsx       # Resource production/storage
+│   │   └── PopulationPanel.tsx      # Citizens & workforce
+│   ├── worldMap/
+│   │   ├── WorldMap.tsx             # Enhanced map with interactions
+│   │   ├── MapControls.tsx          # Zoom, pan, layers
+│   │   ├── SettlementMarker.tsx     # Clickable settlement icons
+│   │   ├── CharacterMarker.tsx      # Character position markers
+│   │   └── MovementPath.tsx         # Travel path visualization
+│   ├── inventory/
+│   │   ├── InventoryGrid.tsx        # Drag-drop inventory
+│   │   ├── ItemTooltip.tsx          # Item hover info
+│   │   └── EquipmentSlots.tsx       # Equipment management
+│   ├── crafting/
+│   │   ├── CraftingInterface.tsx    # Recipe selection
+│   │   ├── ProductionQueue.tsx      # Crafting queue display
+│   │   └── RecipeList.tsx           # Available recipes
+│   ├── social/
+│   │   ├── PartyPanel.tsx           # Party management
+│   │   ├── MessagingPanel.tsx       # In-game messaging
+│   │   └── FactionPanel.tsx         # Faction reputation
+│   ├── combat/
+│   │   ├── CombatInterface.tsx      # Combat display
+│   │   ├── ActionBar.tsx            # Combat abilities
+│   │   └── CombatLog.tsx            # Combat events
+│   ├── quests/
+│   │   ├── QuestLog.tsx             # Active quests
+│   │   ├── QuestDetails.tsx         # Quest objectives
+│   │   └── QuestGiver.tsx           # Available quests
+│   ├── market/
+│   │   ├── MarketView.tsx           # Trading interface
+│   │   ├── Listings.tsx             # Buy/sell orders
+│   │   └── PriceHistory.tsx         # Market trends
+│   └── shared/
+│       ├── TopBar.tsx               # Stats HUD
+│       ├── Navigation.tsx           # Main menu
+│       ├── Modal.tsx                # Reusable modal
+│       ├── Tooltip.tsx              # Tooltip system
+│       └── LoadingSpinner.tsx       # Loading states
+├── hooks/
+│   ├── useCharacter.ts              # Character state management
+│   ├── useActionQueue.ts            # Action queue operations
+│   ├── useWebSocket.ts              # WebSocket connection
+│   ├── useMilitaryOrders.ts         # Military orders state
+│   └── useSettlement.ts             # Settlement data
+├── types/
+│   ├── character.ts                 # Character DTOs
+│   ├── actionQueue.ts               # Action queue DTOs
+│   ├── military.ts                  # Military order DTOs
+│   ├── settlement.ts                # Settlement DTOs
+│   ├── inventory.ts                 # Item & inventory DTOs
+│   ├── crafting.ts                  # Recipe & crafting DTOs
+│   └── api.ts                       # API response types
+├── context/
+│   ├── AuthContext.tsx              # Immutable Passport auth
+│   ├── GameContext.tsx              # Global game state
+│   └── WebSocketContext.tsx         # WebSocket provider
+├── utils/
+│   ├── formatters.ts                # Display formatting
+│   ├── validators.ts                # Input validation
+│   ├── constants.ts                 # Game constants
+│   └── helpers.ts                   # Utility functions
+└── App.tsx                          # Main application
+```
+
+---
+
+## **3) Core Systems to Implement**
+
+### **3.1) API Client Layer**
+
+**File:** `src/api/apiClient.ts`
+
+Requirements:
+- Axios instance with base URL configuration
+- Bearer token injection from Immutable Passport
+- Request/response interceptors for auth
+- Error handling with retry logic (429 rate limits)
+- TypeScript generics for type-safe responses
+- Correlation ID header injection
+
+Example structure:
+```typescript
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+
+class ApiClient {
+  private client: AxiosInstance;
+  private authToken: string | null = null;
+
+  constructor(baseURL: string) {
+    this.client = axios.create({
+      baseURL,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    this.setupInterceptors();
+  }
+
+  setAuthToken(token: string) { /* ... */ }
+  
+  private setupInterceptors() { /* Add auth, error handling */ }
+  
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> { /* ... */ }
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> { /* ... */ }
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> { /* ... */ }
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> { /* ... */ }
+}
+
+export const apiClient = new ApiClient(process.env.REACT_APP_API_URL || 'http://localhost:5000');
+```
+
+### **3.2) Character API Endpoints**
+
+**File:** `src/api/endpoints/characterApi.ts`
+
+Implement these endpoints based on backend spec:
+
+```typescript
+interface CharacterApi {
+  // Character Management
+  getCharacterById(characterId: string): Promise<CharacterDto>;
+  getCharactersByUser(): Promise<CharacterDto[]>;
+  getCharactersByWorld(worldId: string): Promise<CharacterDto[]>;
+  getCharactersBySettlement(settlementId: string): Promise<CharacterDto[]>;
+  createCharacter(request: CreateCharacterRequest): Promise<CharacterDto>;
+  deleteCharacter(characterId: string): Promise<void>;
+  
+  // Character Movement
+  moveCharacter(characterId: string, destination: CoordinatesDto): Promise<void>;
+  getTravelTime(from: CoordinatesDto, to: CoordinatesDto): Promise<TravelEstimateDto>;
+  cancelMovement(characterId: string): Promise<void>;
+  
+  // Character Stats
+  getCharacterStats(characterId: string): Promise<CharacterStatsDto>;
+  getCharacterInventory(characterId: string): Promise<InventoryDto>;
+  getCharacterSkills(characterId: string): Promise<SkillsDto>;
+  
+  // Character State
+  getCharacterCombatState(characterId: string): Promise<CharacterCombatStateDto>;
+  setCharacterStatus(characterId: string, status: string): Promise<void>;
+}
+```
+
+### **3.3) Action Queue API**
+
+**File:** `src/api/endpoints/actionQueueApi.ts`
+
+```typescript
+interface ActionQueueApi {
+  // Queue Management
+  getActionQueue(characterId: string): Promise<ActionQueueDto[]>;
+  getNextAction(characterId: string): Promise<ActionQueueDto | null>;
+  addAction(characterId: string, action: CreateActionDto): Promise<ActionQueueDto>;
+  addActionBatch(characterId: string, actions: CreateActionDto[]): Promise<ActionQueueDto[]>;
+  removeAction(characterId: string, actionId: string): Promise<void>;
+  reorderQueue(characterId: string, actionIds: string[]): Promise<void>;
+  clearQueue(characterId: string): Promise<void>;
+  
+  // Action Templates
+  saveTemplate(name: string, actions: CreateActionDto[]): Promise<ActionTemplateDto>;
+  getTemplates(): Promise<ActionTemplateDto[]>;
+  loadTemplate(templateId: string, characterId: string): Promise<void>;
+  
+  // Action Status
+  completeAction(characterId: string, actionId: string): Promise<void>;
+  cancelAction(characterId: string, actionId: string): Promise<void>;
+  pauseAction(characterId: string, actionId: string): Promise<void>;
+}
+```
+
+### **3.4) Military Orders API**
+
+**File:** `src/api/endpoints/militaryOrdersApi.ts`
+
+```typescript
+interface MilitaryOrdersApi {
+  // Order Management
+  createOrder(order: CreateMilitaryOrderDto): Promise<MilitaryOrderDto>;
+  getOrdersBySettlement(settlementId: string): Promise<MilitaryOrderDto[]>;
+  getOrdersByCharacter(characterId: string): Promise<MilitaryOrderDto[]>;
+  cancelOrder(orderId: string): Promise<void>;
+  updateOrderStatus(orderId: string, status: string): Promise<void>;
+  
+  // Troop Management
+  getTroopStatus(settlementId: string): Promise<TroopStatusDto>;
+  assignToGarrison(characterId: string, settlementId: string): Promise<void>;
+  removeFromGarrison(characterId: string): Promise<void>;
+  
+  // Formation Management
+  getFormations(): Promise<FormationDto[]>;
+  createFormation(formation: CreateFormationDto): Promise<FormationDto>;
+  assignFormation(orderId: string, formationId: string): Promise<void>;
+}
+```
+
+### **3.5) Settlement API**
+
+**File:** `src/api/endpoints/settlementApi.ts`
+
+```typescript
+interface SettlementApi {
+  // Settlement Data
+  getSettlement(settlementId: string): Promise<SettlementDto>;
+  getSettlementsByWorld(worldId: string): Promise<SettlementDto[]>;
+  getSettlementsByFaction(factionId: string): Promise<SettlementDto[]>;
+  
+  // Building Management
+  getBuildings(settlementId: string): Promise<BuildingDto[]>;
+  constructBuilding(settlementId: string, buildingType: string): Promise<BuildingDto>;
+  upgradeBuilding(buildingId: string): Promise<void>;
+  demolishBuilding(buildingId: string): Promise<void>;
+  
+  // Resource Management
+  getResources(settlementId: string): Promise<ResourceDto[]>;
+  getResourceProduction(settlementId: string): Promise<ProductionRateDto[]>;
+  transferResources(from: string, to: string, resources: ResourceTransferDto[]): Promise<void>;
+  
+  // Population
+  getPopulation(settlementId: string): Promise<PopulationDto>;
+  getWorkforce(settlementId: string): Promise<WorkforceDto>;
+}
+```
+
+---
+
+## **4) React Component Implementation Patterns**
+
+### **4.1) Action Queue Panel (Kenshi/RimWorld Style)**
+
+**File:** `src/components/actionQueue/ActionQueuePanel.tsx`
+
+Requirements:
+- Drag-and-drop reordering using react-beautiful-dnd or @dnd-kit
+- Visual action icons with progress bars
+- Pause/cancel buttons per action
+- Priority indicators (Maslow hierarchy levels)
+- Template save/load functionality
+- Auto-repeat toggles
+- Estimated completion times
+
+Key features:
+```typescript
+interface ActionQueuePanelProps {
+  characterId: string;
+}
+
+const ActionQueuePanel: React.FC<ActionQueuePanelProps> = ({ characterId }) => {
+  const [queue, setQueue] = useState<ActionQueueDto[]>([]);
+  const [currentAction, setCurrentAction] = useState<ActionQueueDto | null>(null);
+  
+  // Fetch queue on mount and set up WebSocket updates
+  useEffect(() => {
+    loadQueue();
+    subscribeToActionUpdates();
+  }, [characterId]);
+  
+  const handleDragEnd = (result: DropResult) => {
+    // Reorder queue via API
+  };
+  
+  const addAction = async (actionType: string) => {
+    // Add to queue via API
+  };
+  
+  const removeAction = async (actionId: string) => {
+    // Remove from queue via API
+  };
+  
+  return (
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <Droppable droppableId="action-queue">
+        {(provided) => (
+          <div ref={provided.innerRef} {...provided.droppableProps}>
+            {currentAction && <CurrentActionDisplay action={currentAction} />}
+            {queue.map((action, index) => (
+              <Draggable key={action.id} draggableId={action.id} index={index}>
+                {(provided) => (
+                  <ActionItem
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    action={action}
+                    onCancel={() => removeAction(action.id)}
+                  />
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
+  );
+};
+```
+
+### **4.2) Military Orders Interface**
+
+**File:** `src/components/military/MilitaryOrdersPanel.tsx`
+
+Requirements:
+- Order type selector (Move, Patrol, Attack, Defend, Garrison)
+- Interactive map for destination selection
+- Unit/character multi-select
+- Formation picker
+- Speed settings (Normal/Forced March)
+- Supply requirements display
+- ETA calculation
+- Active orders list with cancel buttons
+
+### **4.3) World Map Enhancements**
+
+**File:** `src/components/worldMap/WorldMap.tsx`
+
+Requirements:
+- Clickable settlement markers with tooltips
+- Character position indicators
+- Faction territory overlays (color-coded)
+- Right-click context menus for actions
+- Path visualization for character movement
+- Zoom/pan controls
+- Layer toggles (political/terrain/resources)
+- Search/filter for locations
+
+### **4.4) WebSocket Integration**
+
+**File:** `src/api/websocket/gameHub.ts`
+
+Use SignalR for real-time updates:
+
+```typescript
+import * as signalR from '@microsoft/signalr';
+
+class GameHub {
+  private connection: signalR.HubConnection;
+  private listeners: Map<string, Set<Function>> = new Map();
+
+  constructor(hubUrl: string) {
+    this.connection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        accessTokenFactory: () => this.getAuthToken()
+      })
+      .withAutomaticReconnect()
+      .build();
+    
+    this.setupHandlers();
+  }
+
+  async start() {
+    await this.connection.start();
+  }
+
+  on(event: string, callback: Function) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+      this.connection.on(event, (...args) => {
+        this.listeners.get(event)?.forEach(cb => cb(...args));
+      });
+    }
+    this.listeners.get(event)!.add(callback);
+  }
+
+  off(event: string, callback: Function) {
+    this.listeners.get(event)?.delete(callback);
+  }
+
+  // Hub methods
+  async joinCharacterChannel(characterId: string) {
+    await this.connection.invoke('JoinCharacterChannel', characterId);
+  }
+
+  async joinSettlementChannel(settlementId: string) {
+    await this.connection.invoke('JoinSettlementChannel', settlementId);
+  }
+}
+
+export const gameHub = new GameHub(process.env.REACT_APP_HUB_URL || 'ws://localhost:5000/gameHub');
+```
+
+Events to subscribe to:
+- `ActionCompleted` - Action queue updates
+- `CharacterMoved` - Position changes
+- `ResourceUpdated` - Settlement resource changes
+- `OrderStatusChanged` - Military order updates
+- `CombatEvent` - Combat state changes
+- `MessageReceived` - In-game messages
+
+---
+
+## **5) TypeScript Type Definitions**
+
+### **5.1) Character Types**
+
+**File:** `src/types/character.ts`
+
+```typescript
+export interface CharacterDto {
+  id: string;
+  worldId: string;
+  settlementId: string | null;
+  name: string;
+  ownerUserId: string;
+  factionId: string;
+  className: string;
+  level: number;
+  experiencePoints: number;
+  health: number;
+  maxHealth: number;
+  mana: number;
+  maxMana: number;
+  posX: number;
+  posY: number;
+  posZ: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface CharacterStatsDto {
+  characterId: string;
+  // Primary Attributes
+  strength: number;
+  agility: number;
+  intelligence: number;
+  constitution: number;
+  charisma: number;
+  wisdom: number;
+  // Derived Stats
+  attack: number;
+  defense: number;
+  speed: number;
+  criticalChance: number;
+  // Additional stats...
+}
+
+export interface CreateCharacterRequest {
+  characterName: string;
+  selectedTier1NFT: string;
+  selectedTier2NFT: string;
+  selectedGeographicalTraitId: string;
+  buildType: 'Template' | 'Custom';
+  selectedTemplateId?: string;
+  selectedSkillIds: string[];
+  className: string;
+  appearance: Record<string, any>;
+}
+```
+
+### **5.2) Action Queue Types**
+
+**File:** `src/types/actionQueue.ts`
+
+```typescript
+export enum ActionStatus {
+  Queued = 'Queued',
+  InProgress = 'InProgress',
+  Completed = 'Completed',
+  Failed = 'Failed',
+  Cancelled = 'Cancelled'
+}
+
+export enum ActionCategory {
+  Physiological = 'Physiological',
+  Safety = 'Safety',
+  Social = 'Social',
+  Esteem = 'Esteem',
+  SelfActualization = 'SelfActualization'
+}
+
+export interface ActionQueueDto {
+  id: string;
+  characterId: string;
+  actionName: string;
+  actionCategory: ActionCategory;
+  priorityLevel: number;
+  status: ActionStatus;
+  targetX: number | null;
+  targetY: number | null;
+  targetZ: number | null;
+  targetBuildingId: string | null;
+  targetResourceId: string | null;
+  durationSeconds: number;
+  progressPercent: number;
+  enqueuedAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  failedReason: string | null;
+}
+
+export interface CreateActionDto {
+  actionName: string;
+  targetX?: number;
+  targetY?: number;
+  targetZ?: number;
+  targetBuildingId?: string;
+  targetResourceId?: string;
+  priorityLevel?: number;
+}
+
+export interface ActionTemplateDto {
+  id: string;
+  name: string;
+  description: string;
+  actions: CreateActionDto[];
+  createdAt: string;
+}
+```
+
+### **5.3) Military Types**
+
+**File:** `src/types/military.ts`
+
+```typescript
+export enum OrderType {
+  Move = 'Move',
+  Patrol = 'Patrol',
+  Attack = 'Attack',
+  Defend = 'Defend',
+  Garrison = 'Garrison',
+  Escort = 'Escort'
+}
+
+export enum OrderStatus {
+  Pending = 'Pending',
+  InProgress = 'InProgress',
+  Completed = 'Completed',
+  Cancelled = 'Cancelled',
+  Failed = 'Failed'
+}
+
+export interface MilitaryOrderDto {
+  id: string;
+  factionId: string;
+  sourceSettlementId: string;
+  targetSettlementId: string | null;
+  orderType: OrderType;
+  unitsCommitted: number;
+  formationId: string | null;
+  issueDate: string;
+  eta: string | null;
+  status: OrderStatus;
+  assignedCharacterIds: string[];
+}
+
+export interface CreateMilitaryOrderDto {
+  factionId: string;
+  sourceSettlementId: string;
+  targetSettlementId?: string;
+  targetX?: number;
+  targetY?: number;
+  targetZ?: number;
+  orderType: OrderType;
+  unitsCommitted: number;
+  formationId?: string;
+  assignedCharacterIds: string[];
+  speedMode?: 'Normal' | 'ForcedMarch';
+}
+
+export interface TroopStatusDto {
+  settlementId: string;
+  stationedTroops: number;
+  enRouteTroops: number;
+  committedTroops: number;
+  availableTroops: number;
+  garrisonCharacters: CharacterDto[];
+}
+
+export interface FormationDto {
+  id: string;
+  name: string;
+  description: string;
+  rows: number;
+  columns: number;
+  spacing: number;
+  configuration: FormationPositionDto[];
+}
+```
+
+---
+
+## **6) UI/UX Requirements**
+
+### **6.1) Top Bar HUD**
+
+Display permanently visible stats:
+- Current character name with switcher dropdown
+- Health/Mana bars
+- Survival stats (last eaten, last drank, last slept)
+- Experience/level progress
+- Currency balance
+- Current location
+- Server time/game tick
+- Notification bell icon
+
+### **6.2) Navigation Menu**
+
+Left sidebar or hamburger menu with sections:
+- Dashboard/Home
+- Character Profile
+- Inventory
+- World Map
+- Action Queue
+- Military Orders
+- Settlement Management
+- Quests
+- Market/Trading
+- Social/Party
+- Settings
+
+### **6.3) Responsive Design**
+
+Must work on:
+- Desktop (1920x1080+)
+- Tablet (768px-1024px)
+- Mobile (320px-767px)
+
+Mobile-specific features:
+- Swipe gestures for map navigation
+- Collapsible panels
+- Bottom tab bar for main sections
+- Touch-optimized buttons (44px minimum)
+
+### **6.4) Accessibility**
+
+- Keyboard navigation support
+- ARIA labels on interactive elements
+- Color-blind friendly palettes
+- Configurable font sizes
+- Screen reader compatibility
+
+---
+
+## **7) State Management**
+
+Use React Context API for global state:
+
+**File:** `src/context/GameContext.tsx`
+
+```typescript
+interface GameState {
+  currentCharacterId: string | null;
+  characters: CharacterDto[];
+  currentWorldId: string | null;
+  currentSettlementId: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface GameContextType extends GameState {
+  setCurrentCharacter: (id: string) => void;
+  loadCharacters: () => Promise<void>;
+  refreshCharacter: (id: string) => Promise<void>;
+}
+
+export const GameContext = createContext<GameContextType | undefined>(undefined);
+
+export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, setState] = useState<GameState>({
+    currentCharacterId: null,
+    characters: [],
+    currentWorldId: null,
+    currentSettlementId: null,
+    isLoading: false,
+    error: null
+  });
+
+  // Implementation...
+  
+  return (
+    <GameContext.Provider value={{ ...state, /* methods */ }}>
+      {children}
+    </GameContext.Provider>
+  );
+};
+```
+
+---
+
+## **8) Error Handling and Loading States**
+
+Every component should handle:
+- Loading spinners during API calls
+- Error messages with retry buttons
+- Empty states with helpful prompts
+- Optimistic UI updates (show immediately, rollback on error)
+
+Example pattern:
+```typescript
+const Component: React.FC = () => {
+  const [data, setData] = useState<DataType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await api.getData();
+      setData(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorDisplay message={error} onRetry={loadData} />;
+  if (!data) return <EmptyState />;
+
+  return <DataDisplay data={data} />;
+};
+```
+
+---
+
+## **9) Performance Optimization**
+
+- Use React.memo for expensive components
+- Implement virtual scrolling for long lists (react-window)
+- Debounce search inputs
+- Cache API responses where appropriate
+- Lazy load routes with React.lazy
+- Optimize re-renders with useMemo and useCallback
+
+---
+
+## **10) Testing Requirements**
+
+Implement tests for:
+- API client methods (mock axios responses)
+- Component rendering (React Testing Library)
+- User interactions (click, drag-drop, form submission)
+- WebSocket event handling
+- State management logic
+
+---
+
+## **11) Build and Deployment**
+
+- Create production build: `npm run build`
+- Environment variables for API URLs
+- Docker containerization for deployment
+- CI/CD pipeline integration
+
+---
+
+## **12) Next Steps Priority**
+
+Phase 1 (Week 1):
+1. Set up API client layer with auth
+2. Implement character selection/switcher
+3. Create enhanced world map component
+4. Set up WebSocket connection
+
+Phase 2 (Week 2):
+5. Build Action Queue panel with drag-drop
+6. Implement Settlement management UI
+7. Create Inventory/Equipment interface
+
+Phase 3 (Week 3):
+8. Build Military Orders system
+9. Implement Crafting interface
+10. Create Quest log UI
+
+Phase 4 (Week 4):
+11. Add Market/Trading system
+12. Implement Combat interface
+13. Polish and bug fixes
+
+---
+
+## **13) Code Quality Standards**
+
+- TypeScript strict mode enabled
+- ESLint with Airbnb config
+- Prettier for code formatting
+- No console.log in production (use proper logging)
+- Meaningful variable names (no abbreviations)
+- Component file size limit: 300 lines (split if larger)
+- Extract reusable logic into custom hooks
+- Comprehensive JSDoc comments for complex functions
+
+---
+
+## **14) Reference Text-Based MMORPGs**
+
+Study these for UI/UX patterns:
+- **Torn City** - Action queue, crime mechanics
+- **Pardus** - Space trading, ship management
+- **Kingdom of Loathing** - Turn-based combat, item management
+- **Urban Dead** - Action points, location-based gameplay
+
+---
+
+This specification provides Claude Code with comprehensive guidance to expand the Dusk Meridian web frontend into a fully functional text-based MMORPG interface. The modular structure allows incremental development while maintaining consistency with the existing codebase and backend API architecture.

@@ -1,0 +1,41 @@
+
+  /**
+   * Exchange IMX Passport tokens for GameServer JWT token
+   */
+  const exchangeForGameServerToken = async (idToken: string, walletAddress: string, email?: string): Promise<string | null> => {
+    try {
+      console.log('🔄 Exchanging IMX token for GameServer token...');
+      console.log('   Wallet:', walletAddress);
+      console.log('   Email:', email);
+      
+      const response = await authApi.loginWithImmutable({
+        idToken,
+        walletAddress,
+        email,
+        passportId: undefined // Can be added if needed
+      });
+      
+      if (response.data?.token) {
+        const gameServerToken = response.data.token;
+        console.log('✅ GameServer token received:', {
+          length: gameServerToken.length,
+          preview: gameServerToken.substring(0, 50) + '...'
+        });
+        
+        // Store GameServer token for API requests
+        localStorage.setItem('gameserver_jwt_token', gameServerToken);
+        console.log('✅ GameServer token stored in localStorage');
+        
+        return gameServerToken;
+      } else {
+        console.warn('❌ No token in GameServer response:', response);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Failed to exchange for GameServer token:', error);
+      if (error instanceof Error) {
+        console.error('   Error message:', error.message);
+      }
+      return null;
+    }
+  };

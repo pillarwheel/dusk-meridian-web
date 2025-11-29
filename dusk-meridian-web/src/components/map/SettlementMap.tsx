@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, ImageOverlay, Marker, Popup, useMap } from 'react-leaflet';
 import { Icon, LatLngBounds, CRS } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { MapBuilding, SettlementMapState } from '@/types/map';
 import { settlementApi } from '@/api/endpoints/settlement';
 import { Building, Users, Hammer, Home, Shield, Coins } from 'lucide-react';
+import { settlementCacheService } from '@/services/settlementCacheService';
 
 // Fix Leaflet default icon paths
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -34,15 +35,33 @@ const FitToBuildings: React.FC<{ buildings: MapBuilding[] }> = ({ buildings }) =
 
   useEffect(() => {
     if (buildings.length > 0) {
+      // Filter out buildings at 0,0,0 (not placed yet)
+      const placedBuildings = buildings.filter(b =>
+        !(b.xCoordinate === 0 && b.yCoordinate === 0 && b.zCoordinate === 0)
+      );
+
+      console.log(`🗺️ Total buildings: ${buildings.length}, Placed buildings: ${placedBuildings.length}`);
+
+      if (placedBuildings.length === 0) {
+        console.log('🗺️ No buildings have been placed yet (all at 0,0,0)');
+        // Set default view
+        map.setView([0, 0], 2);
+        return;
+      }
+
       // Find min/max coordinates to create tight bounds around buildings
       // Use X and Z coordinates (Z is the vertical position on the map)
-      const xCoords = buildings.map(b => b.xCoordinate);
-      const zCoords = buildings.map(b => b.zCoordinate);
+      const xCoords = placedBuildings.map(b => b.xCoordinate);
+      const zCoords = placedBuildings.map(b => b.zCoordinate);
 
       const minX = Math.min(...xCoords);
       const maxX = Math.max(...xCoords);
       const minZ = Math.min(...zCoords);
       const maxZ = Math.max(...zCoords);
+
+      console.log('🗺️ Coordinate ranges:');
+      console.log('  X: min=' + minX + ', max=' + maxX);
+      console.log('  Z: min=' + minZ + ', max=' + maxZ);
 
       // Add padding
       const padding = 50;
@@ -52,12 +71,18 @@ const FitToBuildings: React.FC<{ buildings: MapBuilding[] }> = ({ buildings }) =
       ];
 
       console.log('🗺️ Fitting to building bounds:', bounds);
-      console.log('🗺️ First building coords:', {
-        x: buildings[0].xCoordinate,
-        y: buildings[0].yCoordinate,
-        z: buildings[0].zCoordinate
+      console.log('🗺️ First placed building coords:', {
+        x: placedBuildings[0].xCoordinate,
+        y: placedBuildings[0].yCoordinate,
+        z: placedBuildings[0].zCoordinate
       });
-      map.fitBounds(bounds, { padding: [50, 50] });
+
+      try {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 5 });
+        console.log('🗺️ Map bounds set successfully');
+      } catch (err) {
+        console.error('🗺️ Error setting map bounds:', err);
+      }
     }
   }, [buildings, map]);
 
@@ -80,25 +105,82 @@ export const SettlementMap: React.FC<SettlementMapProps> = ({
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingRef = useRef(false); // Prevent duplicate loads
 
   useEffect(() => {
     loadSettlementData();
+
+    // Set up 5-minute polling for real-time updates
+    const pollInterval = setInterval(() => {
+      console.log('🔄 Polling for settlement map updates...');
+      loadSettlementData();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(pollInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settlementId]);
 
   const loadSettlementData = async () => {
+    // Prevent duplicate simultaneous loads
+    if (loadingRef.current) {
+      console.log('⏸️ Map load already in progress, skipping...');
+      return;
+    }
+
     try {
-      setIsLoading(true);
+      loadingRef.current = true;
+
+      // Only show loading on initial load
+      const isInitialLoad = mapState.buildings.length === 0;
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
       setError(null);
 
-      // Fetch settlement buildings
-      const buildings = await settlementApi.getSettlementBuildings(settlementId);
-      console.log('🏗️ Settlement buildings loaded:', buildings);
-      console.log('🏗️ Building count:', buildings.length);
-      if (buildings.length > 0) {
-        console.log('🏗️ First building:', buildings[0]);
+      // Try to load cached buildings first on initial load
+      if (isInitialLoad) {
+        const hasCachedBuildings = await settlementCacheService.hasCachedBuildings(settlementId);
+        if (hasCachedBuildings) {
+          console.log('🚀 Loading cached buildings for map');
+          const cachedBuildings = await settlementCacheService.getCachedBuildings(settlementId);
+          setMapState(prev => ({
+            ...prev,
+            buildings: cachedBuildings as any[], // Convert to MapBuilding format
+          }));
+          setIsLoading(false);
+        }
       }
 
-      // Fetch outdoor characters (those not in buildings)
+      // Fetch fresh building data
+      const freshBuildings = await settlementApi.getSettlementBuildings(settlementId);
+      console.log('🏗️ Settlement buildings loaded:', freshBuildings);
+      console.log('🏗️ Building count:', freshBuildings.length);
+
+      // Compare with cached data
+      const comparison = await settlementCacheService.compareBuildingData(
+        settlementId,
+        freshBuildings
+      );
+
+      if (comparison.hasChanged || isInitialLoad) {
+        console.log('🏗️ Updating map with fresh building data');
+        setMapState(prev => ({
+          ...prev,
+          buildings: freshBuildings,
+        }));
+
+        // Cache the new data (non-blocking, errors are logged but don't fail the load)
+        settlementCacheService.cacheBuildingData(settlementId, freshBuildings)
+          .catch(err => console.warn('Cache update failed (non-critical):', err));
+
+        if (comparison.changesSummary) {
+          console.log('Building changes:', comparison.changesSummary);
+        }
+      } else {
+        console.log('✅ Buildings unchanged on map');
+      }
+
+      // Always fetch fresh character data (changes frequently)
       const characters = await settlementApi.getSettlementCharacters(settlementId, true);
       console.log('👥 Outdoor characters loaded:', characters.length);
       if (characters.length > 0) {
@@ -114,7 +196,6 @@ export const SettlementMap: React.FC<SettlementMapProps> = ({
 
       setMapState(prev => ({
         ...prev,
-        buildings,
         characters,
       }));
     } catch (err) {
@@ -122,6 +203,7 @@ export const SettlementMap: React.FC<SettlementMapProps> = ({
       setError('Failed to load settlement map');
     } finally {
       setIsLoading(false);
+      loadingRef.current = false;
     }
   };
 
@@ -248,6 +330,11 @@ export const SettlementMap: React.FC<SettlementMapProps> = ({
     );
   }
 
+  // Check if there are any placed buildings
+  const placedBuildings = mapState.buildings.filter(b =>
+    !(b.xCoordinate === 0 && b.yCoordinate === 0 && b.zCoordinate === 0)
+  );
+
   if (mapState.buildings.length === 0) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
@@ -259,32 +346,48 @@ export const SettlementMap: React.FC<SettlementMapProps> = ({
     );
   }
 
+  if (placedBuildings.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Building className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground font-medium mb-2">
+            {mapState.buildings.length} buildings found but not placed yet
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Buildings are at coordinates (0,0,0) and need to be positioned in the game world
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full relative">
       <MapContainer
-        center={[0, 1250]}
-        zoom={3}
-        minZoom={1}
-        maxZoom={6}
+        center={[0, 0]}
+        zoom={2}
+        minZoom={0}
+        maxZoom={8}
         className="h-full w-full"
         style={{ background: '#4ade80' }}
         crs={CRS.Simple}
-        maxBounds={SETTLEMENT_BOUNDS}
-        maxBoundsViscosity={0.8}
       >
-        {/* Green background - will be replaced with settlement image later */}
+        {/* Green background */}
         <ImageOverlay
           url="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%234ade80'/%3E%3C/svg%3E"
-          bounds={SETTLEMENT_BOUNDS}
+          bounds={[[-500, -500], [500, 500]]}
           opacity={1}
         />
 
         <FitToBuildings buildings={mapState.buildings} />
 
-        {/* Render buildings */}
-        {mapState.buildings.map((building) => (
+        {/* Render buildings - only show placed buildings */}
+        {mapState.buildings
+          .filter(b => !(b.xCoordinate === 0 && b.yCoordinate === 0 && b.zCoordinate === 0))
+          .map((building) => (
           <Marker
-            key={building.buildingId}
+            key={building.settlementBuildingId}
             position={[building.zCoordinate, building.xCoordinate]}
             icon={getBuildingIcon(building)}
             eventHandlers={{

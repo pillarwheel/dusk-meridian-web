@@ -56,6 +56,12 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
       wisdom: CharacterCreationTypes.MIN_ATTRIBUTE_VALUE,
       charisma: CharacterCreationTypes.MIN_ATTRIBUTE_VALUE
     },
+    selectedNFTs: {
+      tier1: undefined,
+      tier2: undefined,
+      tier3: undefined,
+      tier4: undefined
+    },
     nftTier: 1,
     walletAddress
   });
@@ -72,7 +78,11 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
   useEffect(() => {
     // Update NFT tier in character data when validation changes
     if (nftValidation) {
-      const highestTier = Math.max(...nftValidation.ownedNFTs.map(nft => nft.tier), 1);
+      // Backend returns 'ownedTiers' not 'ownedNFTs'
+      const ownedNFTs = nftValidation.ownedTiers || [];
+      const highestTier = ownedNFTs.length > 0
+        ? Math.max(...ownedNFTs.map(nft => nft.tier))
+        : 1;
       setCharacterData(prev => ({ ...prev, nftTier: highestTier }));
     }
   }, [nftValidation]);
@@ -118,6 +128,13 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
     setCharacterData(prev => ({
       ...prev,
       attributes
+    }));
+  };
+
+  const handleNFTSelectionChange = (selectedNFTs: { tier1?: string; tier2?: string; tier3?: string; tier4?: string }) => {
+    setCharacterData(prev => ({
+      ...prev,
+      selectedNFTs
     }));
   };
 
@@ -180,7 +197,9 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
         return (
           <NFTValidationStep
             walletAddress={walletAddress}
+            selectedNFTs={characterData.selectedNFTs}
             onValidationComplete={handleNFTValidation}
+            onNFTSelectionChange={handleNFTSelectionChange}
             onError={handleNFTError}
           />
         );
@@ -189,11 +208,7 @@ export const CharacterCreation: React.FC<CharacterCreationProps> = ({
         return (
           <BasicInfoStep
             characterName={characterData.basicInfo.name}
-            selectedRace={characterData.basicInfo.race}
-            selectedClass={characterData.basicInfo.characterClass}
             onNameChange={(name) => handleBasicInfoChange({ name })}
-            onRaceSelect={(race) => handleBasicInfoChange({ race })}
-            onClassSelect={(characterClass) => handleBasicInfoChange({ characterClass })}
             onValidationChange={(isValid, errors) => handleStepValidation(1, isValid, errors)}
           />
         );

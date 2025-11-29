@@ -36,6 +36,7 @@ interface IMXAuthContextType extends IMXAuthState {
   refreshAuth: () => Promise<void>;
 }
 import { imxPassportService } from '@/services/imxPassport';
+import { authApi } from '@/api/endpoints/auth';
 
 const IMXAuthContext = createContext<IMXAuthContextType | undefined>(undefined);
 
@@ -126,6 +127,50 @@ export const IMXAuthProvider: React.FC<IMXAuthProviderProps> = ({ children }) =>
     };
   };
 
+  /**
+   * Exchange IMX Passport tokens for GameServer JWT token
+   */
+  const exchangeForGameServerToken = async (idToken: string, walletAddress: string, email?: string): Promise<string | null> => {
+    try {
+      console.log('🔄 Exchanging IMX token for GameServer token...');
+      console.log('   Wallet:', walletAddress);
+      console.log('   Email:', email);
+      
+      const response = await authApi.loginWithImmutable({
+        idToken,
+        walletAddress,
+        email,
+        passportId: undefined // Can be added if needed
+      });
+      
+      console.log('🔍 Raw response from loginWithImmutable:', response);
+      console.log('🔍 Response type:', typeof response);
+      console.log('🔍 Response keys:', response ? Object.keys(response) : 'N/A');
+      if (response.token) {
+        const gameServerToken = response.token;
+        console.log('✅ GameServer token received:', {
+          length: gameServerToken.length,
+          preview: gameServerToken.substring(0, 50) + '...'
+        });
+        
+        // Store GameServer token for API requests
+        localStorage.setItem('gameserver_jwt_token', gameServerToken);
+        console.log('✅ GameServer token stored in localStorage');
+        
+        return gameServerToken;
+      } else {
+        console.warn('❌ No token in GameServer response:', response);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Failed to exchange for GameServer token:', error);
+      if (error instanceof Error) {
+        console.error('   Error message:', error.message);
+      }
+      return null;
+    }
+  };
+
   const initializeAuth = async () => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -195,6 +240,12 @@ export const IMXAuthProvider: React.FC<IMXAuthProviderProps> = ({ children }) =>
           if (idToken) {
             localStorage.setItem('imx_id_token', idToken);
           }
+
+          // Exchange IMX token for GameServer JWT
+          if (idToken && walletAddress) {
+            await exchangeForGameServerToken(idToken, walletAddress, userInfo.email);
+          }
+
 
           const user: IMXUser = {
             sub: userInfo.sub,
@@ -276,6 +327,12 @@ export const IMXAuthProvider: React.FC<IMXAuthProviderProps> = ({ children }) =>
         if (user.idToken) {
           localStorage.setItem('imx_id_token', user.idToken);
         }
+
+        // Exchange IMX token for GameServer JWT
+        if (user.idToken && user.walletAddress) {
+          await exchangeForGameServerToken(user.idToken, user.walletAddress, user.email);
+        }
+
 
         setAuthState({
           user,

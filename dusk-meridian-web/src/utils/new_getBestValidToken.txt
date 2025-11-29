@@ -1,0 +1,63 @@
+/**
+ * Gets a valid GameServer JWT token from localStorage
+ */
+export function getValidGameServerToken(): string | null {
+  try {
+    const token = localStorage.getItem('gameserver_jwt_token');
+    if (!token) {
+      console.log('📝 No GameServer token in localStorage');
+      return null;
+    }
+
+    console.log('🔍 Checking GameServer token validity...');
+    const validation = validateToken(token, ['sub']);
+    console.log('🔍 GameServer token validation result:', validation);
+
+    if (validation.isValid) {
+      console.log('✅ GameServer token is valid, returning for API use');
+      return token;
+    }
+
+    // Token is invalid - clear it
+    console.warn('⚠️  GameServer token validation failed:', validation.error);
+    console.log('🔧 Clearing expired GameServer token');
+    localStorage.removeItem('gameserver_jwt_token');
+    return null;
+
+  } catch (error) {
+    console.error('❌ Error validating GameServer token:', error);
+    console.log('🔧 Clearing token on error');
+    localStorage.removeItem('gameserver_jwt_token');
+    return null;
+  }
+}
+
+/**
+ * Gets the best available valid token (GameServer first, then IMX, then Auth0 fallback)
+ */
+export function getBestValidToken(): string | null {
+  // Try GameServer token first (this is what the backend expects)
+  const gameServerToken = getValidGameServerToken();
+  if (gameServerToken) {
+    console.log('🎯 Returning GameServer JWT token for API use');
+    return gameServerToken;
+  }
+
+  // Try IMX token second (for backward compatibility during transition)
+  const imxToken = getValidIMXToken();
+  if (imxToken) {
+    console.log('🎯 Returning original IMX token (preserving signature)');
+    console.log('🔍 Backend will map ether_key → wallet_address automatically');
+    return imxToken; // Send original unmodified token
+  }
+
+  // Fallback to Auth0 token
+  const auth0Token = getValidAuth0Token();
+  if (auth0Token) {
+    console.log('🎯 Returning Auth0 token for API use');
+    return auth0Token;
+  }
+
+  console.log('❌ No valid tokens available');
+  return null;
+}

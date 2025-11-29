@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Clock, Users } from 'lucide-react';
 import { settlementApi } from '@/api/endpoints/settlement';
+import { getSettlementImage, getSettlementThumbnail, getDefaultSettlementImage } from '@/data/settlementImages';
 // Temporary inline type to avoid import issues
 interface SettlementListItem {
   settlement_id: number;
@@ -122,24 +123,40 @@ export const SettlementsList: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {settlements.map((settlement) => (
-            <div
-              key={settlement.settlement_id}
-              className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 cursor-pointer border border-gray-200"
-              onClick={() => handleSettlementClick(settlement)}
-            >
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900">{settlement.name}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    settlement.settlement_type === 'City' ? 'bg-blue-100 text-blue-800' :
-                    settlement.settlement_type === 'Town' ? 'bg-green-100 text-green-800' :
-                    settlement.settlement_type === 'Village' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {settlement.settlement_type}
-                  </span>
-                </div>
+          {settlements.map((settlement) => {
+            const imageUrl = getSettlementThumbnail(settlement.settlement_id) ||
+                             getSettlementThumbnail(settlement.name) ||
+                             getDefaultSettlementImage();
+
+            return (
+              <div
+                key={settlement.settlement_id}
+                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 cursor-pointer border border-gray-200 overflow-hidden"
+                onClick={() => handleSettlementClick(settlement)}
+              >
+                {/* Thumbnail Image */}
+                {imageUrl && (
+                  <div className="w-full h-40 overflow-hidden">
+                    <img
+                      src={imageUrl}
+                      alt={settlement.name}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                )}
+
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900">{settlement.name}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      settlement.settlement_type === 'City' ? 'bg-blue-100 text-blue-800' :
+                      settlement.settlement_type === 'Town' ? 'bg-green-100 text-green-800' :
+                      settlement.settlement_type === 'Village' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {settlement.settlement_type}
+                    </span>
+                  </div>
 
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex justify-between">
@@ -183,7 +200,8 @@ export const SettlementsList: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

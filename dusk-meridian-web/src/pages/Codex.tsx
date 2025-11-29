@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Search, Filter, Users, Map, Zap, Sword, Globe, Building2, Crown, User } from 'lucide-react';
-import { codexApi } from '@/api/endpoints/codex-simple';
+import { BookOpen, Search, Filter, Users, Map, Zap, Sword, Globe, Building2, Crown, User, Database, Upload } from 'lucide-react';
+import { codexCachedApi } from '@/api/endpoints/codex-cached';
 import { CacheStatusWidget } from '@/components/admin/CacheStatusWidget';
+import { CacheManagementPanel } from '@/components/codex/CacheManagementPanel';
+import { DataImportPanel } from '@/components/codex/DataImportPanel';
 import { cn } from '@/utils/cn';
+import { getAllSettlementImages, getSettlementImageByName, type SettlementImageData } from '@/data/settlementImages';
 
 // Inline types to avoid import issues
 type CodexCategory = 'mechanics' | 'geography' | 'factions' | 'skills' | 'spells' | 'settlements';
@@ -66,7 +69,7 @@ interface Spell {
 }
 
 interface CodexState {
-  activeCategory: CodexCategory | 'overview';
+  activeCategory: CodexCategory | 'overview' | 'cache-management' | 'data-import';
   searchQuery: string;
   entries: CodexEntry[];
   worldStats: WorldStatistics | null;
@@ -106,10 +109,11 @@ export const Codex: React.FC = () => {
 
   const fetchWorldStatistics = async () => {
     try {
-      const stats = await codexApi.getWorldStatistics();
+      const stats = await codexCachedApi.getWorldStatistics();
       setState(prev => ({ ...prev, worldStats: stats }));
     } catch (err) {
       console.error('Failed to fetch world statistics:', err);
+      // Error is logged but we don't show it to user - cache might have stale data
     }
   };
 
@@ -120,9 +124,9 @@ export const Codex: React.FC = () => {
       switch (category) {
         case 'mechanics':
           const [classes, skills, spells] = await Promise.all([
-            codexApi.getCharacterClasses(),
-            codexApi.getSkills(),
-            codexApi.getSpells()
+            codexCachedApi.getCharacterClasses(),
+            codexCachedApi.getSkills(),
+            codexCachedApi.getSpells()
           ]);
           setState(prev => ({
             ...prev,
@@ -134,7 +138,7 @@ export const Codex: React.FC = () => {
           break;
 
         case 'geography':
-          const settlements = await codexApi.getSettlements();
+          const settlements = await codexCachedApi.getSettlements();
           setState(prev => ({
             ...prev,
             settlements: settlements.slice(0, 50), // Limit for display
@@ -143,7 +147,7 @@ export const Codex: React.FC = () => {
           break;
 
         case 'factions':
-          const factions = await codexApi.getFactions();
+          const factions = await codexCachedApi.getFactions();
           setState(prev => ({
             ...prev,
             factions,
@@ -152,7 +156,7 @@ export const Codex: React.FC = () => {
           break;
 
         default:
-          const response = await codexApi.getCodexByCategory(category);
+          const response = await codexCachedApi.getCodexByCategory(category);
           setState(prev => ({
             ...prev,
             entries: response.data,
@@ -183,7 +187,7 @@ export const Codex: React.FC = () => {
     setState(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await codexApi.searchCodex({
+      const response = await codexCachedApi.searchCodex({
         query: state.searchQuery,
         limit: 50
       });
@@ -370,40 +374,141 @@ export const Codex: React.FC = () => {
     </div>
   );
 
-  const renderSettlements = () => (
-    <div className="space-y-4">
-      <h3 className="text-xl font-bold">Settlements ({state.settlements.length}+)</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {state.settlements.map(settlement => (
-          <div key={settlement.id} className="bg-background/50 p-4 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-semibold flex items-center space-x-2">
-                <span>{settlement.name}</span>
-                {settlement.isCapital && <Crown className="w-4 h-4 text-yellow-400" />}
-              </h4>
-              <span className="text-xs bg-secondary px-2 py-1 rounded">{settlement.type}</span>
-            </div>
-            <div className="space-y-1 text-sm">
-              <div className="flex items-center space-x-1">
-                <Users className="w-3 h-3" />
-                <span>{settlement.population.toLocaleString()} population</span>
+  const renderSettlements = () => {
+    // Get all settlements with image data
+    const settlementsWithImages = getAllSettlementImages();
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold">Cities & Settlements</h3>
+          <p className="text-muted-foreground">{settlementsWithImages.length} locations with detailed information</p>
+        </div>
+
+        <div className="space-y-8">
+          {settlementsWithImages.map((settlement) => (
+            <div key={settlement.id || settlement.name} className="bg-card rounded-lg border border-border overflow-hidden">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                {/* Large Image */}
+                <div className="w-full h-64 lg:h-full min-h-[16rem]">
+                  <img
+                    src={settlement.imagePath}
+                    alt={settlement.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Detailed Information */}
+                <div className="p-6 space-y-4">
+                  {/* Header */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-2xl font-bold">{settlement.name}</h4>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        settlement.type === 'city' ? 'bg-blue-100 text-blue-800' :
+                        settlement.type === 'fortress' ? 'bg-red-100 text-red-800' :
+                        settlement.type === 'underground_city' ? 'bg-purple-100 text-purple-800' :
+                        settlement.type === 'industrial' ? 'bg-gray-100 text-gray-800' :
+                        settlement.type === 'mining' ? 'bg-orange-100 text-orange-800' :
+                        settlement.type === 'salvage' ? 'bg-green-100 text-green-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {settlement.type.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                    {settlement.faction && (
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <Crown className="w-4 h-4" />
+                        <span className="font-medium">{settlement.faction}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-sm leading-relaxed">{settlement.description}</p>
+
+                  {/* Statistics */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {settlement.population && (
+                      <div className="bg-background/50 p-3 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Users className="w-4 h-4 text-blue-400" />
+                          <span className="text-xs font-medium text-muted-foreground">Population</span>
+                        </div>
+                        <p className="text-lg font-bold">{settlement.population.toLocaleString()}</p>
+                      </div>
+                    )}
+                    {settlement.founded && (
+                      <div className="bg-background/50 p-3 rounded-lg">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Building2 className="w-4 h-4 text-yellow-400" />
+                          <span className="text-xs font-medium text-muted-foreground">Founded</span>
+                        </div>
+                        <p className="text-lg font-bold">{settlement.founded}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lore */}
+                  {settlement.lore && (
+                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-4">
+                      <h5 className="text-sm font-semibold mb-2 text-primary">Historical Note</h5>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{settlement.lore}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              {settlement.factionName && (
-                <div>
-                  <span className="font-medium">Faction:</span> {settlement.factionName}
-                </div>
-              )}
-              {settlement.regionName && (
-                <div>
-                  <span className="font-medium">Region:</span> {settlement.regionName}
-                </div>
-              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Also show settlements from API if available */}
+        {state.settlements.length > 0 && (
+          <div className="space-y-4 mt-8">
+            <h3 className="text-xl font-bold border-t border-border pt-6">Other Settlements ({state.settlements.length})</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {state.settlements.map(settlement => {
+                // Check if this settlement already has detailed info above
+                const hasDetailedInfo = settlementsWithImages.some(
+                  s => s.name.toLowerCase() === settlement.name.toLowerCase()
+                );
+
+                if (hasDetailedInfo) return null;
+
+                return (
+                  <div key={settlement.id} className="bg-background/50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold flex items-center space-x-2">
+                        <span>{settlement.name}</span>
+                        {settlement.isCapital && <Crown className="w-4 h-4 text-yellow-400" />}
+                      </h4>
+                      <span className="text-xs bg-secondary px-2 py-1 rounded">{settlement.type}</span>
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <Users className="w-3 h-3" />
+                        <span>{settlement.population.toLocaleString()} population</span>
+                      </div>
+                      {settlement.factionName && (
+                        <div>
+                          <span className="font-medium">Faction:</span> {settlement.factionName}
+                        </div>
+                      )}
+                      {settlement.regionName && (
+                        <div>
+                          <span className="font-medium">Region:</span> {settlement.regionName}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        ))}
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderFactions = () => (
     <div className="space-y-4">
@@ -442,6 +547,15 @@ export const Codex: React.FC = () => {
   );
 
   const renderContent = () => {
+    // Special admin pages don't need loading/error states
+    if (state.activeCategory === 'cache-management') {
+      return <CacheManagementPanel />;
+    }
+
+    if (state.activeCategory === 'data-import') {
+      return <DataImportPanel />;
+    }
+
     if (state.isLoading) {
       return (
         <div className="flex items-center justify-center py-12">
@@ -560,6 +674,35 @@ export const Codex: React.FC = () => {
             </button>
           );
         })}
+
+        {/* Admin/Management Tabs */}
+        <div className="ml-auto flex gap-2">
+          <button
+            onClick={() => setState(prev => ({ ...prev, activeCategory: 'data-import' }))}
+            className={cn(
+              "flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors",
+              state.activeCategory === 'data-import'
+                ? "bg-green-600/20 border-green-600/30 text-green-400"
+                : "bg-secondary border-border hover:bg-secondary/80"
+            )}
+          >
+            <Upload className="w-4 h-4" />
+            <span>Import</span>
+          </button>
+
+          <button
+            onClick={() => setState(prev => ({ ...prev, activeCategory: 'cache-management' }))}
+            className={cn(
+              "flex items-center space-x-2 px-4 py-2 rounded-lg border transition-colors",
+              state.activeCategory === 'cache-management'
+                ? "bg-blue-600/20 border-blue-600/30 text-blue-400"
+                : "bg-secondary border-border hover:bg-secondary/80"
+            )}
+          >
+            <Database className="w-4 h-4" />
+            <span>Cache</span>
+          </button>
+        </div>
       </div>
 
       {/* Content */}

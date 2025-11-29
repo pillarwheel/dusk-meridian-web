@@ -20,13 +20,9 @@ import { LoadingSpinner } from '../utility/LoadingSpinner';
 import { characterCreationApi, characterCreationUtils } from '@/api/endpoints/characterCreation';
 
 interface SkillConfigurationStepProps {
-  mode: CharacterCreationTypes.BuildType;
-  selectedTemplate?: CharacterCreationTypes.SkillTemplate;
-  customSkillIds: string[];
+  skillConfiguration: CharacterCreationTypes.SkillConfiguration;
   nftBonuses?: CharacterCreationTypes.NFTBonuses;
-  onModeChange: (mode: CharacterCreationTypes.BuildType) => void;
-  onTemplateSelect: (template: CharacterCreationTypes.SkillTemplate) => void;
-  onCustomSkillsChange: (skillIds: string[]) => void;
+  onSkillConfigurationChange: (config: CharacterCreationTypes.SkillConfiguration) => void;
   onValidationChange: (isValid: boolean, errors: string[]) => void;
 }
 
@@ -130,15 +126,15 @@ const SkillCard: React.FC<SkillCardProps> = ({ skill, isSelected, isDisabled, on
 };
 
 export const SkillConfigurationStep: React.FC<SkillConfigurationStepProps> = ({
-  mode,
-  selectedTemplate,
-  customSkillIds,
+  skillConfiguration,
   nftBonuses,
-  onModeChange,
-  onTemplateSelect,
-  onCustomSkillsChange,
+  onSkillConfigurationChange,
   onValidationChange
 }) => {
+  // Extract values from skillConfiguration
+  const mode = skillConfiguration.useTemplate ? 'template' : 'custom';
+  const selectedTemplate = skillConfiguration.template;
+  const customSkillIds = skillConfiguration.selectedSkills || [];
   const [templates, setTemplates] = useState<CharacterCreationTypes.SkillTemplate[]>([]);
   const [allSkills, setAllSkills] = useState<CharacterCreationTypes.Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,6 +144,31 @@ export const SkillConfigurationStep: React.FC<SkillConfigurationStepProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Helper functions to update skillConfiguration
+  const onModeChange = (newMode: CharacterCreationTypes.BuildType) => {
+    onSkillConfigurationChange({
+      ...skillConfiguration,
+      useTemplate: newMode === 'template',
+      selectedSkills: newMode === 'custom' ? skillConfiguration.selectedSkills : []
+    });
+  };
+
+  const onTemplateSelect = (template?: CharacterCreationTypes.SkillTemplate) => {
+    onSkillConfigurationChange({
+      ...skillConfiguration,
+      template,
+      templateId: template?.templateId,
+      selectedSkills: template?.preselectedSkillIds || []
+    });
+  };
+
+  const onCustomSkillsChange = (skillIds: string[]) => {
+    onSkillConfigurationChange({
+      ...skillConfiguration,
+      selectedSkills: skillIds
+    });
+  };
 
   useEffect(() => {
     loadData();

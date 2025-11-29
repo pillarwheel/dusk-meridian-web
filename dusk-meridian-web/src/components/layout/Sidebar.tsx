@@ -12,10 +12,13 @@ import {
   Trophy,
   Settings,
   LogOut,
-  Castle
+  Castle,
+  Hexagon,
+  Skull
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { ROUTES } from '@/utils/constants';
+import { ServerStatusCard } from '@/components/server/ServerStatusCard';
 
 interface NavItem {
   name: string;
@@ -31,6 +34,8 @@ const navigation: NavItem[] = [
   { name: 'Marketplace', href: ROUTES.MARKETPLACE, icon: ShoppingBag },
   { name: 'Dashboard', href: ROUTES.DASHBOARD, icon: BarChart3 },
   { name: 'Character', href: ROUTES.CHARACTER, icon: User },
+  { name: 'NFTs', href: '/nfts', icon: Hexagon },
+  { name: 'Creatures', href: '/creatures', icon: Skull },
   { name: 'Codex', href: ROUTES.CODEX, icon: BookOpen },
 ];
 
@@ -97,32 +102,8 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* World Status */}
-        <div className="bg-muted/50 rounded-lg p-4">
-          <h4 className="text-sm font-medium mb-2">World Status</h4>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Players Online</span>
-              <span className="text-green-400 font-medium">Live Data</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Active Settlements</span>
-              <span className="text-blue-400 font-medium">Database</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Character Classes</span>
-              <span className="text-purple-400 font-medium">92 Total</span>
-            </div>
-            <div className="mt-3 pt-2 border-t border-border">
-              <Link
-                to={ROUTES.CODEX}
-                className="text-xs text-primary hover:text-primary/80 transition-colors"
-              >
-                View Full Statistics →
-              </Link>
-            </div>
-          </div>
-        </div>
+        {/* Server Status */}
+        <ServerStatusCard />
       </nav>
 
       {/* Bottom Section */}

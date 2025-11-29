@@ -397,15 +397,50 @@ export const Settlement: React.FC = () => {
       {/* Population Section */}
       {population && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Population</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {population.characters.map((character) => (
-              <div key={character.character_id} className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900">{character.name}</h4>
-                <p className="text-sm text-gray-600">Level {character.level} {character.class}</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Population ({population.total})</h2>
+
+          {/* Characters in Buildings */}
+          {population.byBuilding && population.byBuilding.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">In Buildings</h3>
+              {population.byBuilding.map((buildingGroup) => (
+                <div key={buildingGroup.buildingId} className="mb-4">
+                  <h4 className="font-medium text-gray-700 mb-2">
+                    {buildingGroup.buildingName} ({buildingGroup.characters.length})
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-4">
+                    {buildingGroup.characters.map((character) => (
+                      <div key={character.characterId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <h5 className="font-medium text-gray-900">{character.name}</h5>
+                        <p className="text-sm text-gray-600">Level {character.level} {character.class}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Characters Outside */}
+          {population.outdoor && population.outdoor.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Outside ({population.outdoor.length})</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {population.outdoor.map((character) => (
+                  <div key={character.characterId} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <h5 className="font-medium text-gray-900">{character.name}</h5>
+                    <p className="text-sm text-gray-600">Level {character.level} {character.class}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {(!population.byBuilding || population.byBuilding.length === 0) &&
+           (!population.outdoor || population.outdoor.length === 0) && (
+            <p className="text-gray-500 italic">No characters in this settlement</p>
+          )}
         </div>
       )}
 
@@ -414,27 +449,30 @@ export const Settlement: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Buildings</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {buildings.map((building) => (
-              <div key={building.building_id} className="bg-gray-50 rounded-lg p-4">
+            {buildings.map((building) => {
+              console.log('🏗️ Building data:', building);
+              return (
+              <div key={building.settlementBuildingId} className="bg-gray-50 rounded-lg p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium text-gray-900">{building.name}</h4>
+                  <h4 className="font-medium text-gray-900">{building.name || building.prefabName || `Building Template ${building.buildingId}`}</h4>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    building.isActive && !building.is_destroyed && !building.is_damaged
+                    building.isActive && !building.isDestroyed && !building.isDamaged
                       ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {building.is_destroyed ? 'Destroyed' :
-                     building.is_damaged ? 'Damaged' :
+                    {building.isDestroyed ? 'Destroyed' :
+                     building.isDamaged ? 'Damaged' :
                      building.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">Type: {building.type}</p>
-                <p className="text-sm text-gray-600">Capacity: {building.capacity}</p>
+                <p className="text-sm text-gray-600">Prefab: {building.prefabName || 'N/A'}</p>
                 <p className="text-xs text-gray-500 mt-2">
-                  Position: ({building.x_coordinate}, {building.y_coordinate}, {building.z_coordinate})
+                  Position: ({building.xCoordinate}, {building.yCoordinate}, {building.zCoordinate})
                 </p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

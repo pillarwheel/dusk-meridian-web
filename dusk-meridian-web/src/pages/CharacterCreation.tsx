@@ -7,7 +7,7 @@ import { ROUTES } from '@/utils/constants';
 
 export const CharacterCreationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, walletAddress, isConnected } = useIMXAuth();
+  const { user, walletAddress, connectWallet } = useIMXAuth();
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -47,7 +47,7 @@ export const CharacterCreationPage: React.FC = () => {
   }
 
   // Show wallet connection requirement if not connected
-  if (!isConnected || !walletAddress) {
+  if (!walletAddress) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-md mx-auto text-center">
@@ -59,10 +59,10 @@ export const CharacterCreationPage: React.FC = () => {
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => window.location.reload()}
+                onClick={connectWallet}
                 className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
-                Refresh Page
+                Connect Wallet
               </button>
               <button
                 onClick={handleCancel}

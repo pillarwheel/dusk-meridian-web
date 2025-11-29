@@ -8,11 +8,13 @@ export const Home: React.FC = () => {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-lg p-8 text-center">
-        <h1 className="text-4xl md:text-6xl font-bold mb-6">
-          <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Welcome to Dusk Meridian
-          </span>
-        </h1>
+        <div className="mb-8 flex justify-center">
+          <img
+            src="/Images/DuskMeridian-Logo-v1.png"
+            alt="Dusk Meridian Logo"
+            className="w-full max-w-2xl h-auto"
+          />
+        </div>
         <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
           A persistent strategy MMO where factions clash, settlements rise, and legends are forged.
           Build your empire, command your forces, and shape the world.

@@ -33,7 +33,8 @@ export const GeographicalTraitStep: React.FC<GeographicalTraitStepProps> = ({
   useEffect(() => {
     // This step is optional, so it's always valid
     onValidationChange(true, []);
-  }, [selectedTrait, onValidationChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTrait]);
 
   const loadTraits = async () => {
     try {

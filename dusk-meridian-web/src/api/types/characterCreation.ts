@@ -2,20 +2,28 @@
 
 // NFT Types
 export interface NFTValidationResponse {
-  isValid: boolean;
-  walletAddress: string;
-  ownedNFTs: NFTTier[];
-  maxCharacterSlots: number;
-  currentCharacterCount: number;
+  // Backend actual response structure
   canCreateCharacter: boolean;
+  ownedTiers: NFTTier[];
+  missingRequirements?: string[];
+  availableCharacterSlots?: number;
   message?: string;
+  // Legacy fields (may not be present in actual backend response)
+  isValid?: boolean;
+  walletAddress?: string;
+  ownedNFTs?: NFTTier[]; // Alias for ownedTiers
+  maxCharacterSlots?: number; // Alias for availableCharacterSlots
+  currentCharacterCount?: number;
 }
 
 export interface NFTTier {
   tier: number;
-  count: number;
+  tokenId: string;
   contractAddress: string;
-  tokenIds: string[];
+  metadata: Record<string, any>;
+  // Legacy fields for backward compatibility
+  count?: number;
+  tokenIds?: string[];
 }
 
 export interface NFTBonuses {
@@ -24,7 +32,8 @@ export interface NFTBonuses {
   attributePointBonus: number;
   premiumTemplatesUnlocked: boolean;
   exclusiveTraitsUnlocked: boolean;
-  additionalCustomizationOptions: boolean;
+  additionalCustomizationOptions?: boolean;
+  errorMessage?: string | null;
 }
 
 // Character Creation Configuration
@@ -248,6 +257,36 @@ export interface StepValidation {
   canProceed: boolean;
 }
 
+// Character Creation Data (for managing state across steps)
+export interface BasicInfo {
+  name: string;
+  race?: Race;
+  characterClass?: CharacterClass;
+}
+
+export interface SkillConfiguration {
+  useTemplate: boolean;
+  templateId?: string;
+  template?: SkillTemplate;
+  selectedSkills: string[];
+  customSkillPoints: number;
+}
+
+export interface CharacterCreationData {
+  basicInfo: BasicInfo;
+  geographicalTrait?: GeographicalTrait;
+  skillConfiguration: SkillConfiguration;
+  attributes: AttributeDistribution;
+  selectedNFTs: {
+    tier1?: string;
+    tier2?: string;
+    tier3?: string;
+    tier4?: string;
+  };
+  nftTier: number;
+  walletAddress: string;
+}
+
 // Constants
 export const CREATION_STEPS: { id: CharacterCreationStep; title: string; description: string }[] = [
   {
@@ -283,20 +322,21 @@ export const CREATION_STEPS: { id: CharacterCreationStep; title: string; descrip
 ];
 
 export const DEFAULT_ATTRIBUTE_DISTRIBUTION: AttributeDistribution = {
-  strength: 10,
-  dexterity: 10,
-  constitution: 10,
-  intelligence: 10,
-  wisdom: 10,
-  charisma: 10
+  strength: 8,
+  dexterity: 8,
+  constitution: 8,
+  intelligence: 8,
+  wisdom: 8,
+  charisma: 8
 };
 
-export const BASE_ATTRIBUTE_POINTS = 60;
+export const BASE_ATTRIBUTE_POINTS = 27; // Point-buy system like D&D 5e
 export const MIN_ATTRIBUTE_VALUE = 8;
-export const MAX_ATTRIBUTE_VALUE = 18;
+export const MAX_ATTRIBUTE_VALUE = 15; // Standard point-buy max before racial bonuses
 
 // Validation Constants
 export const CHARACTER_NAME_MIN_LENGTH = 3;
 export const CHARACTER_NAME_MAX_LENGTH = 20;
 export const MIN_SKILLS_REQUIRED = 3;
 export const DEFAULT_MAX_SKILLS = 10;
+export const BASE_SKILL_POINTS = 10;

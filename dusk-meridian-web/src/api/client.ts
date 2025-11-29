@@ -72,10 +72,9 @@ class ApiClient {
       },
       (error) => {
         if (error.response?.status === 401) {
-          console.log('🚨 API 401 response - temporarily NOT clearing tokens for debugging');
+          console.log('🚨 API 401 response - clearing auth token');
           this.clearAuthToken();
-          // Temporarily disable automatic token clearing for debugging
-          // clearAllTokens();
+          // clearAllTokens(); // Optionally clear all tokens
           // Emit auth error event for Auth0 to handle
           window.dispatchEvent(new CustomEvent('auth:token-expired'));
         }
@@ -88,6 +87,17 @@ class ApiClient {
           timestamp: new Date().toISOString(),
           path: error.config?.url || '',
         };
+
+        console.error('❌ API Error:', {
+          url: error.config?.url,
+          method: error.config?.method?.toUpperCase(),
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          code: apiError.code,
+          message: apiError.message,
+          requestData: error.config?.data ? JSON.parse(error.config.data) : null,
+          responseData: error.response?.data
+        });
 
         return Promise.reject(apiError);
       }

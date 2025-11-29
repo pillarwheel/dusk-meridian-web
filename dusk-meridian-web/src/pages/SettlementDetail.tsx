@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Users, Building, Shield, Coins, Map } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Building, Shield, Coins, Map, RefreshCw } from 'lucide-react';
 import { settlementApi } from '@/api/endpoints/settlement';
-import { SettlementMap } from '@/components/map/SettlementMap';
+import { PixiSettlementMap } from '@/components/map/PixiSettlementMap';
+import { getSettlementImage, getSettlementImageById, getSettlementImageByName, getDefaultSettlementImage } from '@/data/settlementImages';
+import { settlementCacheService } from '@/services/settlementCacheService';
 
 interface Settlement {
   settlementId: number;
@@ -47,6 +49,9 @@ interface SettlementPopulation {
       name: string;
       level: number;
       class: string;
+      xCoordinate?: number;
+      yCoordinate?: number;
+      zCoordinate?: number;
     }>;
   }>;
   outdoor: Array<{
@@ -54,6 +59,9 @@ interface SettlementPopulation {
     name: string;
     level: number;
     class: string;
+    xCoordinate?: number;
+    yCoordinate?: number;
+    zCoordinate?: number;
   }>;
 }
 
@@ -64,45 +72,134 @@ export const SettlementDetail: React.FC = () => {
   const [buildings, setBuildings] = useState<SettlementBuilding[]>([]);
   const [population, setPopulation] = useState<SettlementPopulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuildingsUpdating, setIsBuildingsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'overview' | 'buildings' | 'population'>('map');
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false); // Track if we've attempted to load
+  const loadingRef = React.useRef(false); // Prevent duplicate loads
 
   useEffect(() => {
-    if (id) {
-      loadSettlementData(parseInt(id));
+    if (id && !loadingRef.current) {
+      const settlementId = parseInt(id);
+      loadSettlementData(settlementId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only re-run when id changes
+
+  // Poll character positions every 10 seconds for real-time movement
+  useEffect(() => {
+    if (!id) return;
+
+    const settlementId = parseInt(id);
+
+    const characterPollInterval = setInterval(async () => {
+      console.log('🔄 Polling character positions...');
+      try {
+        const freshPopulation = await settlementApi.getSettlementPopulation(settlementId);
+        setPopulation(freshPopulation);
+      } catch (err) {
+        console.error('Failed to poll character positions:', err);
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(characterPollInterval);
   }, [id]);
 
   const loadSettlementData = async (settlementId: number) => {
+    // Prevent duplicate simultaneous loads
+    if (loadingRef.current) {
+      console.log('⏸️ Load already in progress, skipping...');
+      return;
+    }
+
     try {
+      loadingRef.current = true;
       setIsLoading(true);
       setError(null);
 
-      const [settlementData, buildingsData, populationData] = await Promise.allSettled([
+      // Step 1: Load cached buildings immediately if available
+      const hasCachedBuildings = await settlementCacheService.hasCachedBuildings(settlementId);
+
+      if (hasCachedBuildings) {
+        console.log('🚀 Loading cached buildings for fast initial render');
+        const cachedBuildings = await settlementCacheService.getCachedBuildings(settlementId);
+        setBuildings(cachedBuildings);
+
+        // Show initial view quickly
+        setIsLoading(false);
+      }
+
+      // Step 2: Fetch fresh data in parallel
+      const [settlementData, freshBuildingsData, populationData] = await Promise.allSettled([
         settlementApi.getSettlement(settlementId),
         settlementApi.getSettlementBuildings(settlementId),
         settlementApi.getSettlementPopulation(settlementId),
       ]);
 
+      // Update settlement info (rarely changes, but always update)
       if (settlementData.status === 'fulfilled') {
         setSettlement(settlementData.value);
       } else {
         console.error('Failed to load settlement:', settlementData.reason);
       }
 
-      if (buildingsData.status === 'fulfilled') {
-        setBuildings(buildingsData.value);
-      } else {
-        console.error('Failed to load buildings:', buildingsData.reason);
-      }
-
+      // Update population (always use fresh data)
       if (populationData.status === 'fulfilled') {
         setPopulation(populationData.value);
       } else {
         console.error('Failed to load population:', populationData.reason);
       }
 
-      if (settlementData.status === 'rejected') {
+      // Step 3: Compare building data and only update if changed
+      if (freshBuildingsData.status === 'fulfilled') {
+        const freshBuildings = freshBuildingsData.value;
+
+        // Compare with cache
+        const comparison = await settlementCacheService.compareBuildingData(
+          settlementId,
+          freshBuildings
+        );
+
+        if (comparison.hasChanged) {
+          console.log('🔄 Building layout changed, updating...');
+
+          // Show updating indicator only if we had cached data
+          if (hasCachedBuildings) {
+            setIsBuildingsUpdating(true);
+          }
+
+          // Update buildings
+          setBuildings(freshBuildings);
+
+          // Cache the new data (non-blocking, errors are logged but don't fail the load)
+          settlementCacheService.cacheBuildingData(settlementId, freshBuildings)
+            .catch(err => console.warn('Cache update failed (non-critical):', err));
+
+          // Hide updating indicator after a brief delay
+          if (hasCachedBuildings) {
+            setTimeout(() => {
+              setIsBuildingsUpdating(false);
+            }, 500);
+          }
+
+          // Log changes
+          if (comparison.changesSummary) {
+            console.log('Building changes:', comparison.changesSummary);
+          }
+        } else {
+          console.log('✅ Buildings unchanged, using cached data');
+        }
+      } else {
+        console.error('Failed to load buildings:', freshBuildingsData.reason);
+
+        // If we failed to get fresh data but have cache, keep using cache
+        if (!hasCachedBuildings) {
+          // Only show error if we have no cached data at all
+          setError('Failed to load building data');
+        }
+      }
+
+      if (settlementData.status === 'rejected' && !hasCachedBuildings) {
         setError('Failed to load settlement details');
       }
     } catch (err) {
@@ -110,6 +207,8 @@ export const SettlementDetail: React.FC = () => {
       setError('Failed to load settlement details');
     } finally {
       setIsLoading(false);
+      setHasAttemptedLoad(true); // Mark that we've attempted to load
+      loadingRef.current = false;
     }
   };
 
@@ -124,7 +223,8 @@ export const SettlementDetail: React.FC = () => {
     );
   }
 
-  if (error || !settlement) {
+  // Only show error after we've attempted to load (prevents flash of error on initial render)
+  if (hasAttemptedLoad && (error || !settlement)) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center max-w-md">
@@ -139,6 +239,18 @@ export const SettlementDetail: React.FC = () => {
           >
             Back to Settlements
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Safety check: if settlement is still null but we haven't attempted load yet, show loading
+  if (!settlement) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <MapPin className="w-8 h-8 animate-pulse mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading settlement details...</p>
         </div>
       </div>
     );
@@ -219,17 +331,60 @@ export const SettlementDetail: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-auto">{activeTab === 'map' && (
-          <div className="h-full">
-            <SettlementMap
+      <div className="flex-1 relative min-h-0">{activeTab === 'map' && (
+          <div className="absolute inset-0">
+            <PixiSettlementMap
               settlementId={settlement.settlementId}
               settlementName={settlement.name}
+              buildings={buildings}
+              characters={population?.outdoor.map(c => ({
+                characterId: c.characterId,
+                name: c.name,
+                class: c.class,
+                level: c.level,
+                xCoordinate: c.xCoordinate || 0,
+                yCoordinate: c.yCoordinate || 0,
+                zCoordinate: c.zCoordinate || 0,
+                health: { current: 100, max: 100 },
+                isPlayer: true,
+              })) || []}
+              onBuildingSelect={(building) => {
+                console.log('Building selected:', building);
+              }}
+              onRefresh={() => {
+                if (id) {
+                  loadSettlementData(parseInt(id));
+                }
+              }}
             />
+            {/* Building update indicator */}
+            {isBuildingsUpdating && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-[1001]">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span className="text-sm font-medium">Updating building layout...</span>
+              </div>
+            )}
           </div>
         )}
         {activeTab === 'overview' && (
-          <div className="p-6">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="absolute inset-0 overflow-auto">
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto space-y-6">
+            {/* City Image */}
+            {(() => {
+              const imageUrl = getSettlementImage(settlement.settlementId) || getSettlementImage(settlement.name) || getDefaultSettlementImage();
+              return imageUrl && (
+                <div className="bg-card rounded-lg border border-border overflow-hidden">
+                  <img
+                    src={imageUrl}
+                    alt={settlement.name}
+                    className="w-full h-64 object-cover"
+                  />
+                </div>
+              );
+            })()}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-card p-6 rounded-lg border border-border">
               <div className="flex items-center gap-3 mb-4">
                 <Users className="w-5 h-5 text-blue-500" />
@@ -293,12 +448,15 @@ export const SettlementDetail: React.FC = () => {
               </p>
             </div>
           </div>
+              </div>
+            </div>
           </div>
         )}
 
         {activeTab === 'buildings' && (
-          <div className="p-6">
-            <div className="max-w-6xl mx-auto space-y-4">
+          <div className="absolute inset-0 overflow-auto">
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto space-y-4">
             {buildings.length === 0 ? (
               <div className="text-center py-12">
                 <Building className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -309,7 +467,7 @@ export const SettlementDetail: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {buildings.map((building) => (
                   <div
-                    key={building.buildingId}
+                    key={building.settlementBuildingId}
                     className={`bg-card p-4 rounded-lg border transition-colors ${
                       building.isDestroyed
                         ? 'border-red-200 bg-red-50/50'
@@ -340,13 +498,15 @@ export const SettlementDetail: React.FC = () => {
                 ))}
               </div>
             )}
+            </div>
           </div>
           </div>
         )}
 
         {activeTab === 'population' && (
-          <div className="p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
+          <div className="absolute inset-0 overflow-auto">
+            <div className="p-6">
+              <div className="max-w-6xl mx-auto space-y-6">
             {population && population.total > 0 ? (
               <>
                 <div className="bg-card p-4 rounded-lg border border-border">
@@ -421,6 +581,7 @@ export const SettlementDetail: React.FC = () => {
                 <p className="text-muted-foreground">Population information is not available for this settlement.</p>
               </div>
             )}
+            </div>
           </div>
           </div>
         )}

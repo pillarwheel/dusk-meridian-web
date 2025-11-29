@@ -12,6 +12,7 @@ export interface User {
   subscription?: UserSubscription;
 }
 
+
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'auto';
   language: string;
@@ -19,6 +20,7 @@ export interface UserPreferences {
   privacy: PrivacySettings;
   gameplay: GameplaySettings;
 }
+
 
 export interface NotificationSettings {
   email: boolean;
@@ -30,12 +32,14 @@ export interface NotificationSettings {
   system_announcements: boolean;
 }
 
+
 export interface PrivacySettings {
   show_online_status: boolean;
   show_character_stats: boolean;
   allow_friend_requests: boolean;
   show_in_leaderboards: boolean;
 }
+
 
 export interface GameplaySettings {
   auto_accept_guild_invites: boolean;
@@ -46,6 +50,7 @@ export interface GameplaySettings {
   sound_volume: number;
   music_volume: number;
 }
+
 
 export interface UserStats {
   totalPlayTime: number; // in seconds
@@ -58,6 +63,7 @@ export interface UserStats {
   totalEarned: string; // in wei
 }
 
+
 export interface UserSubscription {
   type: 'basic' | 'premium' | 'vip';
   startDate: string;
@@ -66,12 +72,14 @@ export interface UserSubscription {
   benefits: string[];
 }
 
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresAt: string;
   tokenType: 'Bearer';
 }
+
 
 export interface LoginRequest {
   email?: string;
@@ -83,11 +91,13 @@ export interface LoginRequest {
   provider?: 'email' | 'wallet' | 'immutable';
 }
 
+
 export interface LoginResponse {
   user: User;
   tokens: AuthTokens;
   isFirstLogin: boolean;
 }
+
 
 export interface RegisterRequest {
   username: string;
@@ -99,25 +109,30 @@ export interface RegisterRequest {
   referralCode?: string;
 }
 
+
 export interface RegisterResponse {
   user: User;
   tokens: AuthTokens;
   verificationRequired: boolean;
 }
 
+
 export interface ResetPasswordRequest {
   email: string;
 }
+
 
 export interface ResetPasswordResponse {
   message: string;
   resetToken?: string;
 }
 
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
 }
+
 
 export interface UpdateProfileRequest {
   username?: string;
@@ -126,13 +141,16 @@ export interface UpdateProfileRequest {
   preferences?: Partial<UserPreferences>;
 }
 
+
 export interface VerifyEmailRequest {
   token: string;
 }
 
+
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
+
 
 export interface WalletConnection {
   address: string;
@@ -146,6 +164,7 @@ export interface WalletConnection {
   };
 }
 
+
 export interface Session {
   id: string;
   userId: string;
@@ -157,8 +176,18 @@ export interface Session {
   isActive: boolean;
 }
 
+
 export interface AuthError {
   code: string;
   message: string;
   details?: Record<string, any>;
 }
+
+export interface ImmutableLoginResponse {
+  success: boolean;
+  token: string;
+  characterId?: number;
+  email?: string;
+  characterName?: string;
+}
+

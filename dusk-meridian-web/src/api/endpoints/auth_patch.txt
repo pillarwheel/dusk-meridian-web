@@ -1,0 +1,14 @@
+  async loginWithImmutable(params: {
+    idToken: string;
+    walletAddress: string;
+    email?: string;
+    passportId?: string;
+  }): Promise<LoginResponse> {
+    const response = await apiClient.post<LoginResponse>('/auth/immutable-login', {
+      IdToken: params.idToken,
+      WalletAddress: params.walletAddress,
+      Email: params.email,
+      PassportId: params.passportId
+    });
+    return response.data;
+  },

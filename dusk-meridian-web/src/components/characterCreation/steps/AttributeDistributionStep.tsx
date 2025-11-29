@@ -206,16 +206,37 @@ export const AttributeDistributionStep: React.FC<AttributeDistributionStepProps>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {getAttributeList().map((attribute) => (
-            <AttributeSlider
-              key={attribute}
-              attribute={attribute}
-              value={attributes[attribute]}
-              onChange={(value) => handleAttributeChange(attribute, value)}
-              disabled={remainingPoints <= 0 && value < attributes[attribute]}
-              className="bg-secondary/30 rounded-lg p-4"
-            />
-          ))}
+          {getAttributeList().map((attribute) => {
+            // Calculate if this attribute can be increased
+            const currentValue = attributes[attribute];
+            const canIncrease = remainingPoints > 0 && currentValue < CharacterCreationTypes.MAX_ATTRIBUTE_VALUE;
+            const canDecrease = currentValue > CharacterCreationTypes.MIN_ATTRIBUTE_VALUE;
+
+            return (
+              <AttributeSlider
+                key={attribute}
+                attribute={attribute}
+                value={currentValue}
+                onChange={(newValue) => {
+                  // Only allow change if we have points or we're decreasing
+                  const difference = newValue - currentValue;
+                  if (difference > 0 && remainingPoints >= difference) {
+                    // Increasing and we have enough points
+                    handleAttributeChange(attribute, newValue);
+                  } else if (difference < 0) {
+                    // Decreasing is always allowed
+                    handleAttributeChange(attribute, newValue);
+                  } else if (difference === 0) {
+                    // No change
+                    return;
+                  }
+                  // Otherwise, do nothing (not enough points)
+                }}
+                disabled={!canIncrease && !canDecrease}
+                className="bg-secondary/30 rounded-lg p-4"
+              />
+            );
+          })}
         </div>
       </div>
 

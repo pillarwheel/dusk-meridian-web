@@ -118,13 +118,17 @@ class IMXPassportService {
       const userProfile = await this.passportInstance.login();
 
       if (userProfile) {
+        // Fetch tokens separately as they're not included in userProfile
+        const accessToken = await this.getAccessToken();
+        const idToken = await this.getIdToken();
+
         const user: IMXUser = {
           sub: userProfile.sub,
           email: userProfile.email,
           nickname: userProfile.nickname,
           picture: userProfile.picture,
-          accessToken: userProfile.accessToken,
-          idToken: userProfile.idToken,
+          accessToken: accessToken || undefined,
+          idToken: idToken || undefined,
         };
 
         // Try to get wallet address

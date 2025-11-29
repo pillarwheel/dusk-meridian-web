@@ -1,0 +1,415 @@
+I'll search the project knowledge to understand the NFT tier system and requirements before creating the class-NFT mapping.# **Dusk Meridian Character Templates with NFT Requirements**
+
+## **NFT Tier System Summary**
+
+### **Tier 1: Universal Role License NFTs (Required - Choose One)**
+- **Guardian License** - Tank/Protector archetype (Soul-bound after first use)
+- **Striker License** - Damage dealer archetype (Soul-bound after first use)
+- **Specialist License** - Utility/Technical archetype (Soul-bound after first use)
+- **Coordinator License** - Support/Leadership archetype (Soul-bound after first use)
+
+### **Tier 2: Power Source Certification NFTs (Required - Choose One or More)**
+- **Martial Artist Certification** - Physical combat and weapons (Tradeable)
+- **Spellcaster Certification** - Elemental magic and arcane arts (Tradeable)
+- **Technician Certification** - Technology, gadgets, and engineering (Tradeable)
+- **Divine Channeler Certification** - Faith-based healing and support (Tradeable)
+- **Nature Walker Certification** - Natural/primal forces and animals (Tradeable)
+- **Psion Certification** - Mental powers and meditation (Tradeable)
+
+### **Tier 3: Specialization NFTs (Optional - Advanced Options)**
+- Specific combinations like Pyromancer, Battlemage, Shadowblade, Combat Medic
+- Require specific Tier 1 + Tier 2 combinations
+- Fully tradeable
+
+### **Tier 4: Elite/Specialty NFTs (Future - Not Yet Available)**
+- Advanced rare classes like Necromancer
+- Not included in basic templates
+
+---
+
+## **Combat-Focused Templates**
+
+### **1. Knight-Guardian (Tank/Protector)**
+**NFT Requirements:**
+- **Tier 1 Required:** Guardian License
+- **Tier 2 Required:** Martial Artist Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Guardian + Martial Artist)
+
+**Core Role:** Guardian  
+**Primary Skills:** Swordsmanship, Combat Strategy, First Aid, Leadership, Patrolling  
+**Secondary Skills:** Blacksmithing (Weapons), Home Repair
+
+---
+
+### **2. Blade Master (Striker/Melee DPS)**
+**NFT Requirements:**
+- **Tier 1 Required:** Striker License
+- **Tier 2 Required:** Martial Artist Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Striker + Martial Artist)
+
+**Core Role:** Striker  
+**Primary Skills:** Swordsmanship, Martial Arts (Unarmed), Combat Strategy, Survival, Tracking  
+**Secondary Skills:** Blacksmithing (Weapons), Meditation
+
+---
+
+### **3. Ranger-Scout (Striker/Ranged)**
+**NFT Requirements:**
+- **Tier 1 Required:** Striker License
+- **Tier 2 Required:** Martial Artist Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Striker + Martial Artist)
+
+**Core Role:** Striker  
+**Primary Skills:** Archery, Tracking, Survival, Trapping, Hunting  
+**Secondary Skills:** Fishing, Navigation, Herbalism
+
+---
+
+### **4. Martial Adept (Striker/Mobility)**
+**NFT Requirements:**
+- **Tier 1 Required:** Striker License
+- **Tier 2 Required:** Martial Artist Certification + Psion Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Striker + Martial Artist + Psion)
+
+**Core Role:** Striker  
+**Primary Skills:** Martial Arts (Staff), Martial Arts (Unarmed), Meditation, Combat Strategy, Survival  
+**Secondary Skills:** Herbalism, First Aid
+
+---
+
+## **Magic-Focused Templates**
+
+### **5. Elemental Wizard (Caster/Damage)**
+**NFT Requirements:**
+- **Tier 1 Required:** Striker License
+- **Tier 2 Required:** Spellcaster Certification
+- **Tier 3 Optional:** Pyromancer Specialization (if available)
+- **Minimum NFTs:** 2 (Striker + Spellcaster)
+
+**Core Role:** Striker (Magic)  
+**Primary Skills:** Spellcasting, Spell Weaving, Meditation, Science, Enchanting  
+**Secondary Skills:** Alchemy, Herbalism
+
+---
+
+### **6. Battle Cleric (Coordinator/Healer)**
+**NFT Requirements:**
+- **Tier 1 Required:** Coordinator License
+- **Tier 2 Required:** Divine Channeler Certification
+- **Tier 3 Optional:** Combat Medic Specialization (if available)
+- **Minimum NFTs:** 2 (Coordinator + Divine Channeler)
+
+**Core Role:** Coordinator  
+**Primary Skills:** Healing Magic, Spellcasting, First Aid, Medicine, Leadership  
+**Secondary Skills:** Meditation, Herbalism, Swordsmanship
+
+---
+
+### **7. Druid-Shaman (Specialist/Nature)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Nature Walker Certification + Spellcaster Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Specialist + Nature Walker + Spellcaster)
+
+**Core Role:** Specialist  
+**Primary Skills:** Healing Magic, Herbalism, Animal Taming, Spellcasting, Survival  
+**Secondary Skills:** Meditation, Farming, Fishing
+
+---
+
+### **8. Arcane Enchanter (Specialist/Utility)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Spellcaster Certification + Technician Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Specialist + Spellcaster + Technician)
+
+**Core Role:** Specialist  
+**Primary Skills:** Enchanting, Runecrafting, Spellcasting, Spell Weaving, Science  
+**Secondary Skills:** Alchemy, Engineering, Meditation
+
+---
+
+## **Technical-Focused Templates**
+
+### **9. Engineer-Artificer (Specialist/Technical)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Technician Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Specialist + Technician)
+
+**Core Role:** Specialist  
+**Primary Skills:** Engineering, Science, Blacksmithing (Tools), Lockpicking, Carpentry  
+**Secondary Skills:** Mining, Alchemy, Trapping
+
+---
+
+### **10. Airship Pilot (Specialist/Transport)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Technician Certification + Martial Artist Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Specialist + Technician + Martial Artist)
+
+**Core Role:** Specialist  
+**Primary Skills:** Navigation, Engineering, Science, Survival, Leadership  
+**Secondary Skills:** Combat Strategy, Tracking, Negotiation
+
+---
+
+### **11. Alchemist-Apothecary (Specialist/Crafter)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Spellcaster Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Specialist + Spellcaster)
+
+**Core Role:** Specialist  
+**Primary Skills:** Alchemy, Herbalism, Medicine, Science, Brewing  
+**Secondary Skills:** Cooking, Farming, First Aid
+
+---
+
+## **Hybrid & Support Templates**
+
+### **12. Paladin (Guardian/Healer Hybrid)**
+**NFT Requirements:**
+- **Tier 1 Required:** Guardian License
+- **Tier 2 Required:** Martial Artist Certification + Divine Channeler Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Guardian + Martial Artist + Divine Channeler)
+
+**Core Role:** Guardian + Coordinator  
+**Primary Skills:** Swordsmanship, Healing Magic, Leadership, Combat Strategy, First Aid  
+**Secondary Skills:** Meditation, Diplomacy
+
+---
+
+### **13. Bard-Diplomat (Coordinator/Social)**
+**NFT Requirements:**
+- **Tier 1 Required:** Coordinator License
+- **Tier 2 Required:** Spellcaster Certification OR Divine Channeler Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Coordinator + Spellcaster OR Divine Channeler)
+
+**Core Role:** Coordinator  
+**Primary Skills:** Leadership, Negotiation, Diplomacy, Healing Magic, Spellcasting  
+**Secondary Skills:** Herbalism, Cooking, Medicine
+
+---
+
+### **14. Beast Tamer-Ranger (Specialist/Pet Master)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Nature Walker Certification + Martial Artist Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Specialist + Nature Walker + Martial Artist)
+
+**Core Role:** Specialist  
+**Primary Skills:** Animal Taming, Animal Husbandry, Archery, Tracking, Survival  
+**Secondary Skills:** Fishing, Herbalism, Leadership
+
+---
+
+### **15. Shadow Assassin (Striker/Stealth)**
+**NFT Requirements:**
+- **Tier 1 Required:** Striker License
+- **Tier 2 Required:** Martial Artist Certification
+- **Tier 3 Optional:** Shadowblade Specialization (if available - requires Striker + Martial Artist + Spellcaster)
+- **Minimum NFTs:** 2 (Striker + Martial Artist), or 3 with Tier 3 Specialization
+
+**Core Role:** Striker  
+**Primary Skills:** Swordsmanship, Lockpicking, Tracking, Trapping, Survival  
+**Secondary Skills:** Alchemy, Herbalism, Navigation
+
+---
+
+## **Crafting & Economic Templates**
+
+### **16. Master Blacksmith (Specialist/Crafter)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Technician Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Specialist + Technician)
+
+**Core Role:** Specialist  
+**Primary Skills:** Blacksmithing (Weapons), Blacksmithing (Tools), Mining, Engineering, Carpentry  
+**Secondary Skills:** Combat Strategy
+
+---
+
+### **17. Shopkeeper (Specialist/Economic)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** None (Any Tier 2 NFT works, but not required)
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 1 (Specialist only) - Most accessible economic class
+
+**Core Role:** Specialist  
+**Primary Skills:** Negotiation, Diplomacy, Leadership, Cooking, Baking  
+**Secondary Skills:** Alchemy, Sewing, Brewing, Carpentry
+
+**Note:** This is the most accessible template, requiring only a Tier 1 Specialist License.
+
+---
+
+### **18. Trader (Specialist/Commerce)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** None (Any Tier 2 NFT works, but not required)
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 1 (Specialist only) - Most accessible economic class
+
+**Core Role:** Specialist  
+**Primary Skills:** Negotiation, Diplomacy, Navigation, Survival, Leadership  
+**Secondary Skills:** Animal Husbandry, Combat Strategy, Tracking, Lockpicking
+
+**Note:** This is the most accessible mobile commerce template, requiring only a Tier 1 Specialist License.
+
+---
+
+### **19. Homesteader (Specialist/Production)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Nature Walker Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 2 (Specialist + Nature Walker)
+
+**Core Role:** Specialist  
+**Primary Skills:** Farming, Animal Husbandry, Cooking, Baking, Carpentry  
+**Secondary Skills:** Home Repair, Brewing, Sewing, Fishing
+
+---
+
+### **20. Wilderness Survivalist (Specialist/Gatherer)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Nature Walker Certification + Martial Artist Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Specialist + Nature Walker + Martial Artist)
+
+**Core Role:** Specialist  
+**Primary Skills:** Survival, Hunting, Fishing, Trapping, Logging  
+**Secondary Skills:** Tracking, Herbalism, Navigation, Cooking
+
+---
+
+## **Advanced Specialist Templates**
+
+### **21. Combat Medic (Coordinator/Field Support)**
+**NFT Requirements:**
+- **Tier 1 Required:** Coordinator License
+- **Tier 2 Required:** Divine Channeler Certification + Martial Artist Certification
+- **Tier 3 Optional:** Combat Medic Specialization (if available)
+- **Minimum NFTs:** 3 (Coordinator + Divine Channeler + Martial Artist)
+
+**Core Role:** Coordinator  
+**Primary Skills:** Medicine, First Aid, Healing Magic, Combat Strategy, Leadership  
+**Secondary Skills:** Herbalism, Alchemy, Survival
+
+---
+
+### **22. Runecrafter-Mystic (Specialist/Inscription)**
+**NFT Requirements:**
+- **Tier 1 Required:** Specialist License
+- **Tier 2 Required:** Spellcaster Certification + Technician Certification
+- **Tier 3 Optional:** None
+- **Minimum NFTs:** 3 (Specialist + Spellcaster + Technician)
+
+**Core Role:** Specialist  
+**Primary Skills:** Runecrafting, Enchanting, Spellcasting, Science, Meditation  
+**Secondary Skills:** Alchemy, Carpentry, Blacksmithing (Tools)
+
+---
+
+## **NFT Accessibility Summary**
+
+### **Minimum Entry (1 NFT Required):**
+- Shopkeeper (Specialist License only)
+- Trader (Specialist License only)
+
+### **Standard Entry (2 NFTs Required):**
+- Knight-Guardian (Guardian + Martial Artist)
+- Blade Master (Striker + Martial Artist)
+- Ranger-Scout (Striker + Martial Artist)
+- Elemental Wizard (Striker + Spellcaster)
+- Battle Cleric (Coordinator + Divine Channeler)
+- Engineer-Artificer (Specialist + Technician)
+- Alchemist-Apothecary (Specialist + Spellcaster)
+- Master Blacksmith (Specialist + Technician)
+- Homesteader (Specialist + Nature Walker)
+
+### **Advanced Entry (3 NFTs Required):**
+- Martial Adept (Striker + Martial Artist + Psion)
+- Druid-Shaman (Specialist + Nature Walker + Spellcaster)
+- Arcane Enchanter (Specialist + Spellcaster + Technician)
+- Airship Pilot (Specialist + Technician + Martial Artist)
+- Paladin (Guardian + Martial Artist + Divine Channeler)
+- Beast Tamer-Ranger (Specialist + Nature Walker + Martial Artist)
+- Shadow Assassin (Striker + Martial Artist + optional Spellcaster for Tier 3)
+- Combat Medic (Coordinator + Divine Channeler + Martial Artist)
+- Wilderness Survivalist (Specialist + Nature Walker + Martial Artist)
+- Runecrafter-Mystic (Specialist + Spellcaster + Technician)
+
+### **Flexible Entry (2 NFTs, Multiple Options):**
+- Bard-Diplomat (Coordinator + Spellcaster OR Divine Channeler)
+
+---
+
+## **Backend Validation Logic**
+
+```csharp
+public class CharacterTemplateValidator
+{
+    public async Task<ValidationResult> ValidateTemplateAccess(
+        string walletAddress, 
+        string templateId)
+    {
+        var template = CharacterTemplates.GetById(templateId);
+        var ownedNFTs = await BlockchainService.GetOwnedNFTs(walletAddress);
+        
+        // Check Tier 1 requirement
+        if (!ownedNFTs.Any(nft => nft.Type == template.RequiredTier1Role))
+        {
+            return ValidationResult.Failure(
+                $"Missing required {template.RequiredTier1Role} License NFT"
+            );
+        }
+        
+        // Check Tier 2 requirements
+        foreach (var requiredPowerSource in template.RequiredTier2PowerSources)
+        {
+            if (!ownedNFTs.Any(nft => nft.Type == requiredPowerSource))
+            {
+                return ValidationResult.Failure(
+                    $"Missing required {requiredPowerSource} Certification NFT"
+                );
+            }
+        }
+        
+        // Check optional Tier 3 specializations
+        var availableSpecializations = new List<string>();
+        foreach (var spec in template.OptionalTier3Specializations)
+        {
+            if (ownedNFTs.Any(nft => nft.Type == spec))
+            {
+                availableSpecializations.Add(spec);
+            }
+        }
+        
+        return ValidationResult.Success(
+            availableSpecializations,
+            ownedNFTs.Count(nft => nft.Tier >= 1 && nft.Tier <= 3)
+        );
+    }
+}
+```
+
+This system ensures that character templates are properly gated by NFT ownership while providing clear progression paths for players to unlock more advanced combinations.

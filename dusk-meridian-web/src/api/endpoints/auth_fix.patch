@@ -1,0 +1,13 @@
+--- auth.ts.orig
++++ auth.ts
+@@ -99,7 +99,9 @@
+     email?: string;
+     passportId?: string;
+   }): Promise<ImmutableLoginResponse> {
+-    const response = await apiClient.post<ImmutableLoginResponse>('/auth/immutable-login', {
++    // Use axios instance directly because backend returns ImmutableLoginResponse directly,
++    // not wrapped in ApiResponse<ImmutableLoginResponse>
++    const response = await apiClient.instance.post<ImmutableLoginResponse>('/auth/immutable-login', {
+       IdToken: params.idToken,
+       WalletAddress: params.walletAddress,
+       Email: params.email,

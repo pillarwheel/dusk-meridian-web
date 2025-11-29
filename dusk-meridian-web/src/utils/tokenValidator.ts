@@ -31,6 +31,7 @@ export interface TokenValidationResult {
 
 /**
  * Validates a JWT token by checking its structure, expiration, and required claims
+ * Validates a JWT token by checking its structure, expiration, and required claims
  */
 export function validateToken(token: string, requiredClaims: string[] = ['sub']): TokenValidationResult {
   try {
@@ -70,6 +71,7 @@ export function validateToken(token: string, requiredClaims: string[] = ['sub'])
 
 /**
  * Validates IMX token specifically for backend requirements
+ * Validates IMX token specifically for backend requirements
  */
 export function validateIMXToken(token: string): TokenValidationResult {
   // Strict validation for IMX tokens
@@ -103,6 +105,7 @@ export function validateIMXToken(token: string): TokenValidationResult {
 
 /**
  * Validates Auth0 token specifically for backend requirements
+ * Validates Auth0 token specifically for backend requirements
  */
 export function validateAuth0Token(token: string): TokenValidationResult {
   const result = validateToken(token, ['sub']);
@@ -116,6 +119,7 @@ export function validateAuth0Token(token: string): TokenValidationResult {
 }
 
 /**
+ * Gets a valid IMX token from localStorage, clearing invalid ones
  * Gets a valid IMX token from localStorage, clearing invalid ones
  */
 export function getValidIMXToken(): string | null {
@@ -157,6 +161,7 @@ export function getValidIMXToken(): string | null {
 
 /**
  * Gets a valid Auth0 token from localStorage, clearing invalid ones
+ * Gets a valid Auth0 token from localStorage, clearing invalid ones
  */
 export function getValidAuth0Token(): string | null {
   try {
@@ -183,6 +188,7 @@ export function getValidAuth0Token(): string | null {
 
 /**
  * Clears IMX tokens from localStorage and global window object
+ * Clears IMX tokens from localStorage and global window object
  */
 export function clearIMXTokens(): void {
   try {
@@ -197,6 +203,7 @@ export function clearIMXTokens(): void {
 
 /**
  * Clears Auth0 tokens from localStorage
+ * Clears Auth0 tokens from localStorage
  */
 export function clearAuth0Tokens(): void {
   try {
@@ -208,6 +215,7 @@ export function clearAuth0Tokens(): void {
 }
 
 /**
+ * Transform IMX token to add missing wallet_address claim
  * Transform IMX token to add missing wallet_address claim
  */
 export function transformIMXTokenForBackend(token: string): string {
@@ -273,10 +281,51 @@ export function transformIMXTokenForBackend(token: string): string {
 }
 
 /**
- * Gets the best available valid token (IMX first, then Auth0 fallback)
+ * Gets a valid GameServer JWT token from localStorage
+ */
+export function getValidGameServerToken(): string | null {
+  try {
+    const token = localStorage.getItem('gameserver_jwt_token');
+    if (!token) {
+      console.log('📝 No GameServer token in localStorage');
+      return null;
+    }
+
+    console.log('🔍 Checking GameServer token validity...');
+    const validation = validateToken(token, ['sub']);
+    console.log('🔍 GameServer token validation result:', validation);
+
+    if (validation.isValid) {
+      console.log('✅ GameServer token is valid, returning for API use');
+      return token;
+    }
+
+    // Token is invalid - clear it
+    console.warn('⚠️  GameServer token validation failed:', validation.error);
+    console.log('🔧 Clearing expired GameServer token');
+    localStorage.removeItem('gameserver_jwt_token');
+    return null;
+
+  } catch (error) {
+    console.error('❌ Error validating GameServer token:', error);
+    console.log('🔧 Clearing token on error');
+    localStorage.removeItem('gameserver_jwt_token');
+    return null;
+  }
+}
+
+/**
+ * Gets the best available valid token (GameServer first, then IMX, then Auth0 fallback)
  */
 export function getBestValidToken(): string | null {
-  // Try IMX token first
+  // Try GameServer token first (this is what the backend expects)
+  const gameServerToken = getValidGameServerToken();
+  if (gameServerToken) {
+    console.log('🎯 Returning GameServer JWT token for API use');
+    return gameServerToken;
+  }
+
+  // Try IMX token second (for backward compatibility during transition)
   const imxToken = getValidIMXToken();
   if (imxToken) {
     console.log('🎯 Returning original IMX token (preserving signature)');

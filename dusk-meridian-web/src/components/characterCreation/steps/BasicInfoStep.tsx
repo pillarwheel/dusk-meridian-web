@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, CheckCircle2, AlertCircle, Search, Sparkles, Crown, Shield, Sword, Target } from 'lucide-react';
+import { User, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import * as CharacterCreationTypes from '@/api/types/characterCreation';
 import { characterCreationApi, characterCreationUtils } from '@/api/endpoints/characterCreation';
@@ -7,11 +7,7 @@ import { LoadingSpinner } from '../utility/LoadingSpinner';
 
 interface BasicInfoStepProps {
   characterName: string;
-  selectedRace?: CharacterCreationTypes.Race;
-  selectedClass?: CharacterCreationTypes.CharacterClass;
   onNameChange: (name: string) => void;
-  onRaceSelect: (race: CharacterCreationTypes.Race) => void;
-  onClassSelect: (characterClass: CharacterCreationTypes.CharacterClass) => void;
   onValidationChange: (isValid: boolean, errors: string[]) => void;
 }
 
@@ -24,54 +20,34 @@ interface NameValidationState {
 
 export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
   characterName,
-  selectedRace,
-  selectedClass,
   onNameChange,
-  onRaceSelect,
-  onClassSelect,
   onValidationChange
 }) => {
-  const [races, setRaces] = useState<CharacterCreationTypes.Race[]>([]);
-  const [classes, setClasses] = useState<CharacterCreationTypes.CharacterClass[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [nameValidation, setNameValidation] = useState<NameValidationState>({
     isChecking: false
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
     validateStep();
-  }, [characterName, selectedRace, selectedClass, nameValidation]);
+  }, [characterName, nameValidation]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (characterName.length >= CharacterCreationTypes.CHARACTER_NAME_MIN_LENGTH) {
         checkNameAvailability(characterName);
+      } else if (characterName.length > 0) {
+        setNameValidation({
+          isChecking: false,
+          isAvailable: false,
+          error: `Name must be at least ${CharacterCreationTypes.CHARACTER_NAME_MIN_LENGTH} characters`
+        });
+      } else {
+        setNameValidation({ isChecking: false });
       }
     }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [characterName]);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const [raceData, classData] = await Promise.all([
-        characterCreationApi.getAvailableRaces(),
-        characterCreationApi.getAvailableClasses()
-      ]);
-
-      setRaces(raceData.filter(r => r.isActive));
-      setClasses(classData.filter(c => c.isActive));
-    } catch (error) {
-      console.error('Failed to load races and classes:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const checkNameAvailability = useCallback(async (name: string) => {
     const nameValidationResult = characterCreationUtils.validateCharacterName(name);
@@ -97,7 +73,8 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
       console.error('Failed to check name availability:', error);
       setNameValidation({
         isChecking: false,
-        error: 'Unable to check name availability'
+        isAvailable: undefined,
+        error: 'Unable to check name availability. You can still proceed.'
       });
     }
   }, []);
@@ -117,58 +94,21 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
       }
     }
 
-    // Race validation
-    if (!selectedRace) {
-      errors.push('Please select a race');
-    }
-
-    // Class validation
-    if (!selectedClass) {
-      errors.push('Please select a class');
-    }
-
-    const isValid = errors.length === 0 && nameValidation.isAvailable === true;
+    // Allow proceeding even if name check failed (undefined) but name format is valid
+    const isValid = errors.length === 0 && (nameValidation.isAvailable === true || nameValidation.isAvailable === undefined);
     onValidationChange(isValid, errors);
   };
 
-  const getClassIcon = (className: string) => {
-    const name = className.toLowerCase();
-    if (name.includes('guardian') || name.includes('tank')) return Shield;
-    if (name.includes('striker') || name.includes('warrior')) return Sword;
-    if (name.includes('specialist') || name.includes('mage')) return Sparkles;
-    if (name.includes('coordinator') || name.includes('support')) return Target;
-    return Crown;
-  };
-
-  const getRaceIcon = (raceName: string) => {
-    // You can customize these based on your actual races
-    const name = raceName.toLowerCase();
-    if (name.includes('human')) return User;
-    if (name.includes('elf')) return Sparkles;
-    if (name.includes('dwarf')) return Shield;
-    if (name.includes('orc')) return Sword;
-    return User;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <LoadingSpinner
-          size="lg"
-          message="Loading Character Options"
-          submessage="Fetching available races and classes..."
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold mb-2">Basic Character Information</h2>
+        <h2 className="text-2xl font-bold mb-2">Character Name</h2>
         <p className="text-muted-foreground">
-          Choose your character's name, race, and class
+          Choose a unique name for your character
+        </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Your class name will be determined by your skill selection in the next steps
         </p>
       </div>
 
@@ -189,7 +129,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
               className={cn(
                 'w-full px-4 py-3 bg-background border rounded-lg transition-colors',
                 'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary',
-                nameValidation.error
+                nameValidation.error && nameValidation.isAvailable !== undefined
                   ? 'border-red-400'
                   : nameValidation.isAvailable === true
                   ? 'border-green-400'
@@ -202,7 +142,7 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
               {nameValidation.isChecking ? (
                 <LoadingSpinner size="sm" />
-              ) : nameValidation.error ? (
+              ) : nameValidation.error && nameValidation.isAvailable !== undefined ? (
                 <AlertCircle className="w-5 h-5 text-red-400" />
               ) : nameValidation.isAvailable === true ? (
                 <CheckCircle2 className="w-5 h-5 text-green-400" />
@@ -212,8 +152,8 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
 
           {/* Name feedback */}
           <div className="space-y-2">
-            {nameValidation.error && (
-              <p className="text-sm text-red-400 flex items-center space-x-2">
+            {nameValidation.error && nameValidation.isAvailable !== undefined && (
+              <p className="text-sm text-yellow-400 flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4" />
                 <span>{nameValidation.error}</span>
               </p>
@@ -264,162 +204,32 @@ export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({
         </div>
       </div>
 
-      {/* Race Selection */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <Sparkles className="w-6 h-6 text-purple-400" />
-          <h3 className="text-lg font-semibold">Race</h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {races.map((race) => {
-            const RaceIcon = getRaceIcon(race.name);
-            const isSelected = selectedRace?.id === race.id;
-
-            return (
-              <div
-                key={race.id}
-                onClick={() => onRaceSelect(race)}
-                className={cn(
-                  'border rounded-lg p-4 cursor-pointer transition-all hover:border-primary/50',
-                  isSelected ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
-                )}
-              >
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className={cn(
-                    'p-2 rounded-lg',
-                    isSelected ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'
-                  )}>
-                    <RaceIcon className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-semibold">{race.name}</h4>
-                  {isSelected && <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />}
-                </div>
-
-                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                  {race.description}
-                </p>
-
-                {/* Racial traits preview */}
-                {race.racialTraits.length > 0 && (
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-medium text-muted-foreground">Racial Traits</h5>
-                    <div className="space-y-1">
-                      {race.racialTraits.slice(0, 2).map((trait, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          <span className="text-xs text-foreground">{trait}</span>
-                        </div>
-                      ))}
-                      {race.racialTraits.length > 2 && (
-                        <p className="text-xs text-muted-foreground pl-4">
-                          +{race.racialTraits.length - 2} more traits
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Class Selection */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <Sword className="w-6 h-6 text-red-400" />
-          <h3 className="text-lg font-semibold">Class</h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {classes.map((characterClass) => {
-            const ClassIcon = getClassIcon(characterClass.name);
-            const isSelected = selectedClass?.id === characterClass.id;
-
-            return (
-              <div
-                key={characterClass.id}
-                onClick={() => onClassSelect(characterClass)}
-                className={cn(
-                  'border rounded-lg p-4 cursor-pointer transition-all hover:border-primary/50',
-                  isSelected ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border'
-                )}
-              >
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className={cn(
-                    'p-2 rounded-lg',
-                    isSelected ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'
-                  )}>
-                    <ClassIcon className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-semibold">{characterClass.name}</h4>
-                  {isSelected && <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />}
-                </div>
-
-                <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-                  {characterClass.description}
-                </p>
-
-                {/* Primary attributes */}
-                {characterClass.primaryAttributes.length > 0 && (
-                  <div className="mb-3">
-                    <h5 className="text-xs font-medium text-muted-foreground mb-2">Primary Attributes</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {characterClass.primaryAttributes.map((attr, index) => (
-                        <span
-                          key={index}
-                          className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full"
-                        >
-                          {attr}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Class features preview */}
-                {characterClass.classFeatures.length > 0 && (
-                  <div>
-                    <h5 className="text-xs font-medium text-muted-foreground mb-2">Class Features</h5>
-                    <div className="space-y-1">
-                      {characterClass.classFeatures.slice(0, 2).map((feature, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                          <span className="text-xs text-foreground">{feature}</span>
-                        </div>
-                      ))}
-                      {characterClass.classFeatures.length > 2 && (
-                        <p className="text-xs text-muted-foreground pl-4">
-                          +{characterClass.classFeatures.length - 2} more features
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {/* Information about character creation */}
+      <div className="bg-blue-600/10 border border-blue-600/30 rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-3 text-blue-400">About Character Creation</h3>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            • <strong>No fixed classes or races:</strong> Dusk Meridian uses a skill-based character system
+          </p>
+          <p>
+            • <strong>Geographical Traits:</strong> Choose your character's origin in the next step (optional)
+          </p>
+          <p>
+            • <strong>Skills:</strong> Select from templates or build a custom skill set
+          </p>
+          <p>
+            • <strong>Class Name:</strong> Your "class" will be defined by your skill template selection
+          </p>
         </div>
       </div>
 
       {/* Selection Summary */}
-      {(selectedRace || selectedClass || characterName) && (
+      {characterName && (
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Current Selection</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Name</h4>
-              <p className="font-medium">{characterName || 'Not selected'}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Race</h4>
-              <p className="font-medium">{selectedRace?.name || 'Not selected'}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-1">Class</h4>
-              <p className="font-medium">{selectedClass?.name || 'Not selected'}</p>
-            </div>
+          <div>
+            <h4 className="text-sm font-medium text-muted-foreground mb-1">Character Name</h4>
+            <p className="font-medium text-xl">{characterName}</p>
           </div>
         </div>
       )}

@@ -1,0 +1,41 @@
+--- Character.tsx.backup
++++ Character.tsx
+@@ -9,7 +9,7 @@
+ export const Character: React.FC = () => {
+   const navigate = useNavigate();
+   const { user, walletAddress, connectWallet, isLoading: authLoading } = useIMXAuth();
+-  const [characters, setCharacters] = useState<{characters?: CharacterTypes.Character[]}>({});
++  const [characters, setCharacters] = useState<CharacterTypes.Character[]>([]);
+   const [isLoading, setIsLoading] = useState(true);
+   const [error, setError] = useState<string | null>(null);
+ 
+@@ -19,15 +19,15 @@
+ 
+   // Auto-reload characters when wallet gets connected
+   useEffect(() => {
+-    if (walletAddress && (characters?.characters?.length || 0) === 0 && !isLoading && !error) {
++    if (walletAddress && characters.length === 0 && !isLoading && !error) {
+       loadCharacters();
+     }
+-  }, [walletAddress, characters?.characters?.length, isLoading, error]);
++  }, [walletAddress, characters.length, isLoading, error]);
+ 
+   const loadCharacters = async () => {
+     if (!walletAddress) {
+-      setCharacters({});
++      setCharacters([]);
+       setIsLoading(false);
+       return;
+     }
+@@ -35,7 +35,9 @@
+     try {
+       setIsLoading(true);
+       setError(null);
+       const data = await characterApi.getCharacters();
+-      setCharacters(data);
++      // Handle both wrapped and direct array responses
++      const characterArray = Array.isArray(data) ? data : (data?.characters || []);
++      setCharacters(characterArray);
+     } catch (err) {
+       console.error('Failed to load characters:', err);
+       setError('Failed to load characters. Please check if the game server is running.');

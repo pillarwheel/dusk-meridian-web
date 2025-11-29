@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import {
+import type {
   User,
   LoginRequest,
   LoginResponse,
@@ -12,8 +12,9 @@ import {
   VerifyEmailRequest,
   RefreshTokenRequest,
   AuthTokens,
-  Session
-} from '../types';
+  Session,
+  ImmutableLoginResponse,
+} from '../types/auth';
 
 export const authApi = {
   async login(request: LoginRequest): Promise<LoginResponse> {
@@ -92,10 +93,19 @@ export const authApi = {
     return response.data;
   },
 
-  async loginWithImmutable(accessToken: string, idToken: string): Promise<LoginResponse> {
-    const response = await apiClient.post<LoginResponse>('/auth/immutable-login', {
-      accessToken,
-      idToken,
+  async loginWithImmutable(params: {
+    idToken: string;
+    walletAddress: string;
+    email?: string;
+    passportId?: string;
+  }): Promise<ImmutableLoginResponse> {
+    // Use axios instance directly because backend returns ImmutableLoginResponse directly,
+    // not wrapped in ApiResponse<ImmutableLoginResponse>
+    const response = await apiClient.instance.post<ImmutableLoginResponse>('/auth/immutable-login', {
+      IdToken: params.idToken,
+      WalletAddress: params.walletAddress,
+      Email: params.email,
+      PassportId: params.passportId
     });
     return response.data;
   },

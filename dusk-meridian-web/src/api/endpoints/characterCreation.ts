@@ -7,14 +7,18 @@ export const characterCreationApi = {
     const response = await apiClient.get<CharacterCreationTypes.NFTValidationResponse>(
       `/nft/validate-nfts?walletAddress=${walletAddress}`
     );
-    return response.data;
+    // apiClient.get returns response.data from axios, which is the actual data
+    // Backend returns data directly, not wrapped in { data: ... }
+    return response as any as CharacterCreationTypes.NFTValidationResponse;
   },
 
   async getNFTBonuses(walletAddress: string): Promise<CharacterCreationTypes.NFTBonuses> {
     const response = await apiClient.get<CharacterCreationTypes.NFTBonuses>(
       `/nft/bonuses?walletAddress=${walletAddress}`
     );
-    return response.data;
+    // apiClient.get returns response.data from axios, which is the actual data
+    // Backend returns data directly, not wrapped in { data: ... }
+    return response as any as CharacterCreationTypes.NFTBonuses;
   },
 
   // Character Creation Configuration
@@ -22,34 +26,34 @@ export const characterCreationApi = {
     const response = await apiClient.get<CharacterCreationTypes.CharacterCreationConfig>(
       `/character/creation-config?walletAddress=${walletAddress}`
     );
-    return response.data;
+    return response as any as CharacterCreationTypes.CharacterCreationConfig;
   },
 
   // Geographical Traits
   async getGeographicalTraits(): Promise<CharacterCreationTypes.GeographicalTrait[]> {
     const response = await apiClient.get<CharacterCreationTypes.GeographicalTrait[]>('/geographicaltraits');
-    return response.data;
+    return response as any as CharacterCreationTypes.GeographicalTrait[];
   },
 
   async getGeographicalTraitsByRegion(regionName: string): Promise<CharacterCreationTypes.GeographicalTrait[]> {
     const response = await apiClient.get<CharacterCreationTypes.GeographicalTrait[]>(
       `/geographicaltraits/region/${regionName}`
     );
-    return response.data;
+    return response as any as CharacterCreationTypes.GeographicalTrait[];
   },
 
   // Skill Templates
   async getSkillTemplates(requiredNFTTier?: number): Promise<CharacterCreationTypes.SkillTemplate[]> {
     const params = requiredNFTTier ? `?requiredNFTTier=${requiredNFTTier}` : '';
     const response = await apiClient.get<CharacterCreationTypes.SkillTemplate[]>(`/skilltemplates${params}`);
-    return response.data;
+    return response as any as CharacterCreationTypes.SkillTemplate[];
   },
 
   async getSkillTemplatesByCategory(category: string): Promise<CharacterCreationTypes.SkillTemplate[]> {
     const response = await apiClient.get<CharacterCreationTypes.SkillTemplate[]>(
       `/skilltemplates/category/${category}`
     );
-    return response.data;
+    return response as any as CharacterCreationTypes.SkillTemplate[];
   },
 
   // Character Validation
@@ -60,10 +64,10 @@ export const characterCreationApi = {
       '/character/validate',
       request
     );
-    return response.data;
+    return response as any as CharacterCreationTypes.CharacterValidationResponse;
   },
 
-  // Character Creation
+  // Character Creation (Production - Requires Auth)
   async createCharacter(
     request: CharacterCreationTypes.CharacterCreationRequest
   ): Promise<CharacterCreationTypes.CharacterCreationResponse> {
@@ -71,7 +75,79 @@ export const characterCreationApi = {
       '/character/create',
       request
     );
-    return response.data;
+    return response as any as CharacterCreationTypes.CharacterCreationResponse;
+  },
+
+  // Smart Character Creation - Uses dev or prod endpoint based on environment
+  async createCharacterSmart(
+    characterData: CharacterCreationTypes.CharacterCreationData
+  ): Promise<CharacterCreationTypes.CharacterCreationResponse> {
+    const useDevEndpoint = import.meta.env.VITE_USE_DEV_CHARACTER_CREATION === 'true';
+
+    if (useDevEndpoint) {
+      console.log('[CharacterCreation API] Using development endpoint (no auth)');
+      return this.createCharacterDev(characterData);
+    } else {
+      console.log('[CharacterCreation API] Using production endpoint (auth required)');
+      // Convert CharacterCreationData to CharacterCreationRequest format
+      const request: CharacterCreationTypes.CharacterCreationRequest = {
+        name: characterData.basicInfo.name,
+        raceId: characterData.basicInfo.race?.id || 1,
+        classId: characterData.basicInfo.characterClass?.id || 1,
+        geographicalTraitId: characterData.geographicalTrait?.id,
+        skillTemplateId: characterData.skillConfiguration.templateId,
+        customSkillIds: characterData.skillConfiguration.selectedSkills,
+        attributeDistribution: characterData.attributes,
+        walletAddress: characterData.walletAddress,
+        selectedNFTs: characterData.selectedNFTs,
+        appearance: {
+          modelType: 'Standard',
+          customizationData: {}
+        }
+      };
+      return this.createCharacter(request);
+    }
+  },
+
+  // Development Character Creation (No Auth Required)
+  async createCharacterDev(
+    characterData: CharacterCreationTypes.CharacterCreationData
+  ): Promise<CharacterCreationTypes.CharacterCreationResponse> {
+    // Transform frontend data structure to backend API format
+    // Matches CreateCharacterDevRequest model from backend
+    const request = {
+      characterName: characterData.basicInfo.name,
+      walletAddress: characterData.walletAddress || '0x0000000000000000000000000000000000000DEV',
+      passportId: null,
+      // NFT Tiers - explicitly include all 4 tiers (even if null)
+      selectedTier1NFT: characterData.selectedNFTs.tier1 || 'dev-tier1',
+      selectedTier2NFT: characterData.selectedNFTs.tier2 || 'dev-tier2',
+      selectedTier3NFT: characterData.selectedNFTs.tier3 || null,
+      selectedTier4NFT: characterData.selectedNFTs.tier4 || null,
+      // Geographical trait - backend will auto-select "mountain-dweller" if null
+      selectedGeographicalTraitId: characterData.geographicalTrait?.id || null,
+      // Build configuration - enum: 0 = Template, 1 = Custom
+      buildType: characterData.skillConfiguration.useTemplate ? 0 : 1,
+      selectedTemplateId: characterData.skillConfiguration.templateId || null,
+      selectedSkillIds: characterData.skillConfiguration.selectedSkills || [],
+      // Character basics
+      className: characterData.basicInfo.characterClass?.name || 'Adventurer',
+      // Appearance customization
+      appearance: {
+        modelType: 'Standard',
+        customizationData: {}
+      }
+      // NOTE: raceId and attributeDistribution are NOT in backend CreateCharacterDevRequest model
+      // They are handled by the backend based on className and defaults
+    };
+
+    console.log('[CharacterCreation API] Sending dev character creation request:', request);
+
+    const response = await apiClient.post<CharacterCreationTypes.CharacterCreationResponse>(
+      '/character/create-dev',
+      request
+    );
+    return response as any as CharacterCreationTypes.CharacterCreationResponse;
   },
 
   // Character Name Availability
@@ -79,23 +155,23 @@ export const characterCreationApi = {
     const response = await apiClient.get<{ available: boolean; suggestions?: string[] }>(
       `/character/check-name?name=${encodeURIComponent(name)}`
     );
-    return response.data;
+    return response as any as { available: boolean; suggestions?: string[] };
   },
 
   // Helper Methods
   async getAvailableRaces(): Promise<CharacterCreationTypes.Race[]> {
     const response = await apiClient.get<CharacterCreationTypes.Race[]>('/character/races');
-    return response.data;
+    return response as any as CharacterCreationTypes.Race[];
   },
 
   async getAvailableClasses(): Promise<CharacterCreationTypes.CharacterClass[]> {
     const response = await apiClient.get<CharacterCreationTypes.CharacterClass[]>('/character/classes');
-    return response.data;
+    return response as any as CharacterCreationTypes.CharacterClass[];
   },
 
   async getAllSkills(): Promise<CharacterCreationTypes.Skill[]> {
     const response = await apiClient.get<CharacterCreationTypes.Skill[]>('/character/skills');
-    return response.data;
+    return response as any as CharacterCreationTypes.Skill[];
   },
 
   // Character Slots Information
@@ -103,7 +179,7 @@ export const characterCreationApi = {
     const response = await apiClient.get<CharacterCreationTypes.CharacterSlots>(
       `/character/slots?walletAddress=${walletAddress}`
     );
-    return response.data;
+    return response as any as CharacterCreationTypes.CharacterSlots;
   },
 };
 
@@ -192,6 +268,12 @@ export const characterCreationUtils = {
     maxSkills: number
   ): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
+
+    // Handle undefined or null selectedSkills
+    if (!selectedSkills || !Array.isArray(selectedSkills)) {
+      errors.push('No skills selected');
+      return { valid: false, errors };
+    }
 
     if (selectedSkills.length < CharacterCreationTypes.MIN_SKILLS_REQUIRED) {
       errors.push(`You must select at least ${CharacterCreationTypes.MIN_SKILLS_REQUIRED} skills`);

@@ -14,7 +14,13 @@ import { Map } from '@/pages/Map';
 import { Marketplace } from '@/pages/Marketplace';
 import { Dashboard } from '@/pages/Dashboard';
 import { Codex } from '@/pages/Codex';
+import { NFTCodex } from '@/pages/NFTCodex';
+import { CreatureCodex } from '@/pages/CreatureCodex';
+import { ServerStatistics } from '@/pages/ServerStatistics';
+import { CharacterCreationPage } from '@/pages/CharacterCreation';
 import { ROUTES } from '@/utils/constants';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { GameProvider } from '@/contexts/GameContext';
 
 // Create a simple error boundary
 class ErrorBoundary extends React.Component<
@@ -61,27 +67,35 @@ function App() {
     <ErrorBoundary>
       <IMXAuthProvider>
         <QueryClientProvider client={queryClient}>
-          <Router>
-            <Routes>
-              {/* Auth routes without layout */}
-              <Route path="/redirect" element={<Redirect />} />
+          <WebSocketProvider autoConnect={true}>
+            <GameProvider>
+              <Router>
+                <Routes>
+                  {/* Auth routes without layout */}
+                  <Route path="/redirect" element={<Redirect />} />
 
-              {/* Main routes with layout */}
-              <Route element={<Layout />}>
-                <Route path={ROUTES.HOME} element={<Home />} />
-                <Route path={ROUTES.LOGIN} element={<Login />} />
-                <Route path={ROUTES.SETTLEMENTS} element={<SettlementsList />} />
-                <Route path="/settlement/:id" element={<SettlementDetail />} />
-                <Route path="/character/:id" element={<CharacterDetail />} />
-                <Route path={ROUTES.CHARACTER} element={<Character />} />
-                <Route path={ROUTES.MAP} element={<Map />} />
-                <Route path={ROUTES.MARKETPLACE} element={<Marketplace />} />
-                <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
-                <Route path={ROUTES.CODEX} element={<Codex />} />
-                <Route path="/*" element={<Home />} />
-              </Route>
-            </Routes>
-          </Router>
+                  {/* Main routes with layout */}
+                  <Route element={<Layout />}>
+                    <Route path={ROUTES.HOME} element={<Home />} />
+                    <Route path={ROUTES.LOGIN} element={<Login />} />
+                    <Route path={ROUTES.SETTLEMENTS} element={<SettlementsList />} />
+                    <Route path="/settlement/:id" element={<SettlementDetail />} />
+                    <Route path="/character/:id" element={<CharacterDetail />} />
+                    <Route path={ROUTES.CHARACTER} element={<Character />} />
+                    <Route path={ROUTES.CHARACTER_CREATE} element={<CharacterCreationPage />} />
+                    <Route path={ROUTES.MAP} element={<Map />} />
+                    <Route path={ROUTES.MARKETPLACE} element={<Marketplace />} />
+                    <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+                    <Route path={ROUTES.CODEX} element={<Codex />} />
+                    <Route path="/nfts" element={<NFTCodex />} />
+                    <Route path="/creatures" element={<CreatureCodex />} />
+                    <Route path="/server-statistics" element={<ServerStatistics />} />
+                    <Route path="/*" element={<Home />} />
+                  </Route>
+                </Routes>
+              </Router>
+            </GameProvider>
+          </WebSocketProvider>
         </QueryClientProvider>
       </IMXAuthProvider>
     </ErrorBoundary>

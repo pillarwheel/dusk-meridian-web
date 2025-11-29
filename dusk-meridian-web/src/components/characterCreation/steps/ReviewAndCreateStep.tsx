@@ -51,9 +51,11 @@ export const ReviewAndCreateStep: React.FC<ReviewAndCreateStepProps> = ({
       await new Promise(resolve => setTimeout(resolve, 500));
       setCreationStep('Creating character...');
 
-      // Create the character
-      const newCharacter = await characterCreationApi.createCharacter(characterData);
+      // Create the character using smart endpoint selection (dev/prod based on env)
+      console.log('🎮 [ReviewAndCreateStep] Creating character with data:', JSON.stringify(characterData, null, 2));
+      const newCharacter = await characterCreationApi.createCharacterSmart(characterData);
 
+      console.log('Character creation response:', newCharacter);
       setCreationStep('Character created successfully!');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -166,7 +168,7 @@ export const ReviewAndCreateStep: React.FC<ReviewAndCreateStepProps> = ({
             <div className="flex items-center space-x-2 mb-2">
               <Crown className="w-5 h-5 text-yellow-400" />
               <span className="text-sm text-muted-foreground">
-                Tier {nftValidation?.ownedNFTs.reduce((max, nft) => Math.max(max, nft.tier), 1) || 1} NFT
+                Tier {nftValidation?.ownedNFTs?.reduce((max, nft) => Math.max(max, nft.tier), 1) || 1} NFT
               </span>
             </div>
             <p className="text-xs text-muted-foreground">{archetype.description}</p>

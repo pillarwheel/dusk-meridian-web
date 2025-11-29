@@ -1,0 +1,677 @@
+# Fix Settlement Map Display Issues - Claude Code Instructions
+
+## Problem Summary
+The PixiJS settlement map at `http://localhost:5173/settlement/<settlement_id>` has four critical issues:
+1. **Slow Loading**: Duplicate API calls causing unnecessary delays
+2. **Characters Not Visibly Moving**: Animation logic exists but characters appear static
+3. **Map Off-Center with Empty Space**: Massive 10000x10000 background creates wasted space
+4. **Buildings Not Drawing Properly**: Incorrect coordinate system and camera positioning
+
+## Root Causes Identified
+
+### Issue 1: Duplicate Data Loading
+**Location**: `PixiSettlementMap.tsx` (lines 253-314) and `SettlementDetail.tsx` (lines 82-186)
+
+**Problem**: 
+- Parent component (SettlementDetail) loads ALL settlement data including buildings
+- Child component (PixiSettlementMap) re-loads the SAME buildings data independently
+- Results in 2x API calls for buildings on every render
+
+**Solution**: Remove data loading from PixiSettlementMap and accept data as props
+
+### Issue 2: Massive Background Creates Empty Space
+**Location**: `PixiSettlementMap.tsx` (line 140)
+
+**Problem**:
+```typescript
+const bg = createBackgroundTexture(10000, 10000, 0x4ade80);
+bg.position.set(-5000, -5000);
+```
+This creates a 10000x10000 pixel background centered at origin, but settlements typically occupy only ~200x200 units. This causes 98% empty space and makes buildings appear as tiny dots.
+
+**Solution**: Create dynamic background sized to actual settlement bounds with padding
+
+### Issue 3: Camera Fitting Fails Silently
+**Location**: `PixiSettlementMap.tsx` (lines 504-541)
+
+**Problem**:
+- `fitCameraToBuildings` is called BEFORE buildings are actually rendered to screen
+- Background positioning conflicts with building coordinates
+- No bounds validation means zero-width/height bounds can occur
+
+**Solution**: Fit camera AFTER buildings render with proper bounds validation
+
+### Issue 4: Character Movement Not Visible
+**Location**: `PixiSettlementMap.tsx` (lines 442-465)
+
+**Problem**:
+- Character animation works perfectly (GSAP implementation is correct)
+- BUT: Characters only animate when API returns NEW positions
+- Polling interval is 5 minutes (line 327-330)
+- Characters don't move between polls even though backend simulates continuous movement
+
+**Solution**: Implement client-side interpolation or reduce polling to 5-10 seconds
+
+## Detailed Fix Instructions
+
+### Fix 1: Remove Duplicate Data Loading
+
+**File**: `src/components/map/PixiSettlementMap.tsx`
+
+**Action**: Delete the entire `loadSettlementData` useCallback and its useEffect
+
+**DELETE** lines 253-333 (entire loadSettlementData function and its useEffect)
+
+**REPLACE** the component props interface:
+```typescript
+interface PixiSettlementMapProps {
+  settlementId: number;
+  settlementName: string;
+  buildings: MapBuilding[];  // ADD THIS
+  characters: MapCharacter[]; // ADD THIS
+  onBuildingSelect?: (building: MapBuilding) => void;
+  onRefresh?: () => void; // ADD THIS for manual refresh
+}
+```
+
+**UPDATE** the component to use props:
+```typescript
+export const PixiSettlementMap: React.FC<PixiSettlementMapProps> = ({
+  settlementId,
+  settlementName,
+  buildings,      // FROM PROPS NOW
+  characters,     // FROM PROPS NOW
+  onBuildingSelect,
+  onRefresh,
+}) => {
+  // Remove loadingRef, isLoading, error state
+  // Remove mapState - use props directly
+  
+  const [selectedEntity, setSelectedEntity] = useState<any>(null);
+  const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1 });
+  const [showCharacters, setShowCharacters] = useState(true);
+  const [gridOverlay, setGridOverlay] = useState(false);
+```
+
+### Fix 2: Create Dynamic Background Sized to Content
+
+**File**: `src/components/map/PixiSettlementMap.tsx`
+
+**REPLACE** lines 139-142 (background creation) with:
+```typescript
+// Don't create background here - we'll create it dynamically after buildings load
+backgroundLayer.label = 'background';
+```
+
+**ADD** new function after `fitCameraToBuildings`:
+```typescript
+// Create background sized to actual content
+const createDynamicBackground = (buildings: MapBuilding[]) => {
+  if (!appRef.current) return;
+  
+  const app = appRef.current;
+  const backgroundLayer = app.stage.getChildAt(0) as PIXI.Container;
+  
+  // Clear old background
+  backgroundLayer.removeChildren();
+  
+  if (buildings.length === 0) {
+    // Fallback small background
+    const bg = createBackgroundTexture(500, 500, 0x4ade80);
+    bg.position.set(-250, -250);
+    backgroundLayer.addChild(bg);
+    return;
+  }
+  
+  // Calculate actual bounds
+  const positions = buildings.map(b => ({ x: b.xCoordinate, y: b.zCoordinate }));
+  const bounds = calculateBounds(positions);
+  
+  // Add generous padding
+  const padding = 200;
+  const bgWidth = bounds.width + padding * 2;
+  const bgHeight = bounds.height + padding * 2;
+  
+  console.log('📐 Creating dynamic background:', {
+    width: bgWidth,
+    height: bgHeight,
+    bounds,
+    buildingCount: buildings.length
+  });
+  
+  // Create properly sized background
+  const bg = createBackgroundTexture(bgWidth, bgHeight, 0x4ade80);
+  bg.position.set(bounds.minX - padding, bounds.minY - padding);
+  backgroundLayer.addChild(bg);
+};
+```
+
+### Fix 3: Fix Camera Fitting and Rendering Order
+
+**File**: `src/components/map/PixiSettlementMap.tsx`
+
+**UPDATE** the buildings rendering useEffect (lines 336-408):
+```typescript
+// Render buildings (static layer - renders once)
+useEffect(() => {
+  if (!buildingLayerRef.current || !spatialGridRef.current || !appRef.current) {
+    console.log('⏸️ Building render skipped: refs not ready');
+    return;
+  }
+  
+  if (buildings.length === 0) {
+    console.log('⏸️ Building render skipped: no buildings loaded');
+    return;
+  }
+
+  console.log('🏗️ Rendering buildings layer...', { buildingCount: buildings.length });
+  const startTime = performance.now();
+
+  const buildingLayer = buildingLayerRef.current;
+
+  // Clear existing buildings
+  buildingLayer.removeChildren();
+
+  // Filter placed buildings
+  const placedBuildings = buildings.filter(
+    (b) => !(b.xCoordinate === 0 && b.yCoordinate === 0 && b.zCoordinate === 0)
+  );
+
+  console.log(`📍 Found ${placedBuildings.length} placed buildings out of ${buildings.length} total`);
+
+  if (placedBuildings.length === 0) {
+    console.log('⚠️ No placed buildings to render (all at origin 0,0,0)');
+    return;
+  }
+  
+  // FIRST: Create dynamic background sized to buildings
+  createDynamicBackground(placedBuildings);
+
+  // Rebuild spatial grid
+  const gridObjects = placedBuildings.map((b) => ({
+    id: b.buildingId,
+    x: b.xCoordinate,
+    y: b.zCoordinate,
+    data: b,
+  }));
+  spatialGridRef.current.rebuild(gridObjects);
+
+  // Create building sprites
+  placedBuildings.forEach((building) => {
+    const sprite = createBuildingSprite(building);
+
+    // Add click handler
+    sprite.on('pointerdown', (event: PIXI.FederatedPointerEvent) => {
+      event.stopPropagation();
+      console.log('🏢 Building clicked:', building.name);
+      setSelectedEntity({
+        type: 'building',
+        id: building.buildingId,
+        data: building,
+      });
+      if (onBuildingSelect) {
+        onBuildingSelect(building);
+      }
+    });
+
+    buildingLayer.addChild(sprite);
+  });
+
+  const renderTime = performance.now() - startTime;
+  console.log(`✅ Buildings rendered in ${renderTime.toFixed(2)}ms`);
+  console.log('📊 Spatial grid stats:', spatialGridRef.current.getStats());
+
+  // LAST: Fit camera after buildings are rendered
+  // Use requestAnimationFrame to ensure render is complete
+  requestAnimationFrame(() => {
+    fitCameraToBuildings(placedBuildings);
+  });
+}, [buildings, onBuildingSelect]);
+```
+
+**UPDATE** `fitCameraToBuildings` function (lines 504-541):
+```typescript
+// Fit camera to buildings on initial load
+const fitCameraToBuildings = (buildings: MapBuilding[]) => {
+  if (!appRef.current || buildings.length === 0) {
+    console.log('⚠️ Cannot fit camera: app or buildings missing');
+    return;
+  }
+
+  const positions = buildings.map((b) => ({
+    x: b.xCoordinate,
+    y: b.zCoordinate,
+  }));
+
+  const bounds = calculateBounds(positions);
+  
+  // Validate bounds
+  if (bounds.width === 0 || bounds.height === 0) {
+    console.warn('⚠️ Invalid bounds:', bounds);
+    return;
+  }
+  
+  const padding = 100;
+
+  const app = appRef.current;
+  const viewWidth = app.screen.width;
+  const viewHeight = app.screen.height;
+
+  // Calculate scale to fit all buildings with safety limits
+  const scaleX = viewWidth / (bounds.width + padding * 2);
+  const scaleY = viewHeight / (bounds.height + padding * 2);
+  const scale = Math.min(Math.max(scaleX, scaleY, 0.1), 2); // Clamp between 0.1x and 2x
+
+  // Center on buildings
+  const centerX = bounds.minX + bounds.width / 2;
+  const centerY = bounds.minY + bounds.height / 2;
+
+  console.log('📷 Fitting camera:', {
+    bounds,
+    scale,
+    center: { x: centerX, y: centerY },
+    viewSize: { width: viewWidth, height: viewHeight }
+  });
+
+  app.stage.scale.set(scale);
+  app.stage.position.set(
+    viewWidth / 2 - centerX * scale,
+    viewHeight / 2 - centerY * scale
+  );
+
+  setViewport({
+    x: app.stage.position.x,
+    y: app.stage.position.y,
+    scale,
+  });
+
+  console.log('✅ Camera fitted successfully');
+};
+```
+
+### Fix 4: Character Movement Visibility
+
+**File**: `src/components/map/PixiSettlementMap.tsx`
+
+**UPDATE** the characters rendering useEffect (lines 411-501):
+```typescript
+// Render characters (dynamic layer with GSAP animations)
+useEffect(() => {
+  if (!characterLayerRef.current) return;
+  if (!showCharacters) {
+    characterLayerRef.current.removeChildren();
+    characterSpritesRef.current.clear();
+    return;
+  }
+
+  console.log('👥 Updating characters layer...');
+  const characterLayer = characterLayerRef.current;
+  const existingSprites = characterSpritesRef.current;
+
+  // Track which characters still exist
+  const currentCharacterIds = new Set(characters.map((c) => c.characterId));
+
+  // Remove characters that no longer exist (with fade out animation)
+  existingSprites.forEach((spriteData, characterId) => {
+    if (!currentCharacterIds.has(characterId)) {
+      gsap.to(spriteData.sprite, {
+        alpha: 0,
+        duration: 0.5,
+        onComplete: () => {
+          characterLayer.removeChild(spriteData.sprite);
+          spriteData.sprite.destroy();
+          existingSprites.delete(characterId);
+        },
+      });
+    }
+  });
+
+  // Update or create character sprites
+  characters.forEach((character) => {
+    const existingData = existingSprites.get(character.characterId);
+
+    if (existingData) {
+      // Update existing character position with smooth animation
+      const newX = character.xCoordinate;
+      const newY = character.zCoordinate || character.yCoordinate;
+
+      // Check if position actually changed
+      const posChanged = 
+        existingData.sprite.position.x !== newX ||
+        existingData.sprite.position.y !== newY;
+
+      if (posChanged) {
+        console.log(`🚶 Character ${character.name} moving:`, {
+          from: { x: existingData.sprite.position.x, y: existingData.sprite.position.y },
+          to: { x: newX, y: newY }
+        });
+        
+        // Animate position change
+        if (existingData.animation) {
+          existingData.animation.kill();
+        }
+
+        existingData.animation = gsap.to(existingData.sprite.position, {
+          x: newX,
+          y: newY,
+          duration: 2,
+          ease: 'power2.inOut',
+        });
+      }
+
+      // Update stored data
+      existingData.character = character;
+    } else {
+      // Create new character sprite
+      const sprite = createCharacterSprite(character);
+
+      // Start invisible and fade in
+      sprite.alpha = 0;
+      gsap.to(sprite, {
+        alpha: 1,
+        duration: 0.5,
+        ease: 'back.out',
+      });
+
+      // Add click handler
+      sprite.on('pointerdown', (event: PIXI.FederatedPointerEvent) => {
+        event.stopPropagation();
+        console.log('👤 Character clicked:', character.name);
+        setSelectedEntity({
+          type: 'character',
+          id: character.characterId,
+          data: character,
+        });
+      });
+
+      characterLayer.addChild(sprite);
+      existingSprites.set(character.characterId, { sprite, character });
+    }
+  });
+
+  console.log(`✅ Characters updated: ${characters.length} active`);
+}, [characters, showCharacters]);
+```
+
+### Fix 5: Update Parent Component (SettlementDetail)
+
+**File**: `src/pages/SettlementDetail.tsx`
+
+**UPDATE** the map tab rendering (around line 280):
+```typescript
+{activeTab === 'map' && settlement && (
+  <div className="absolute inset-0">
+    <PixiSettlementMap
+      settlementId={settlement.settlementId}
+      settlementName={settlement.name}
+      buildings={buildings}
+      characters={population?.outdoor.map(c => ({
+        characterId: c.characterId,
+        name: c.name,
+        class: c.class,
+        level: c.level,
+        xCoordinate: 0, // You'll need to add coords to outdoor chars
+        yCoordinate: 0,
+        zCoordinate: 0,
+        health: { current: 100, max: 100 },
+        isPlayer: true,
+      })) || []}
+      onBuildingSelect={(building) => {
+        console.log('Building selected:', building);
+      }}
+      onRefresh={() => loadSettlementData(parseInt(id!))}
+    />
+  </div>
+)}
+```
+
+**ADD** more frequent character position updates:
+```typescript
+useEffect(() => {
+  if (!id) return;
+  
+  const settlementId = parseInt(id);
+  
+  // Poll character positions every 10 seconds (not 5 minutes!)
+  const characterPollInterval = setInterval(async () => {
+    console.log('🔄 Polling character positions...');
+    try {
+      const freshPopulation = await settlementApi.getSettlementPopulation(settlementId);
+      setPopulation(freshPopulation);
+    } catch (err) {
+      console.error('Failed to poll character positions:', err);
+    }
+  }, 10000); // 10 seconds
+  
+  return () => clearInterval(characterPollInterval);
+}, [id]);
+```
+
+### Fix 6: Update Settlement API to Return Character Coordinates
+
+**File**: `src/api/endpoints/settlement.ts`
+
+The current `getSettlementPopulation` doesn't return character coordinates. You need to update it:
+
+**UPDATE** the `getSettlementPopulation` method (lines 64-132):
+```typescript
+async getSettlementPopulation(settlementId: number): Promise<{
+  total: number;
+  byBuilding: Array<{
+    buildingId: number;
+    buildingName: string;
+    characters: Array<{
+      characterId: number;
+      name: string;
+      level: number;
+      class: string;
+      xCoordinate: number;  // ADD
+      yCoordinate: number;  // ADD
+      zCoordinate: number;  // ADD
+    }>;
+  }>;
+  outdoor: Array<{
+    characterId: number;
+    name: string;
+    level: number;
+    class: string;
+    xCoordinate: number;  // ADD
+    yCoordinate: number;  // ADD
+    zCoordinate: number;  // ADD
+  }>;
+}> {
+  // ... existing code to fetch and group characters ...
+  
+  // When mapping characters, include coordinates:
+  const byBuilding = Array.from(grouped.entries())
+    .map(([settlementBuildingId, chars]) => ({
+      buildingId: settlementBuildingId,
+      buildingName: buildingMap.get(settlementBuildingId) || `Building ${settlementBuildingId}`,
+      characters: chars.map(c => ({
+        characterId: c.characterId,
+        name: c.name,
+        level: c.level,
+        class: c.class,
+        xCoordinate: c.xCoordinate,  // ADD
+        yCoordinate: c.yCoordinate,  // ADD
+        zCoordinate: c.zCoordinate,  // ADD
+      }))
+    }));
+  
+  const outdoorMapped = outdoor.map(c => ({
+    characterId: c.characterId,
+    name: c.name,
+    level: c.level,
+    class: c.class,
+    xCoordinate: c.xCoordinate,  // ADD
+    yCoordinate: c.yCoordinate,  // ADD
+    zCoordinate: c.zCoordinate,  // ADD
+  }));
+  
+  return {
+    total: charactersData.length,
+    byBuilding,
+    outdoor: outdoorMapped
+  };
+}
+```
+
+## Testing Checklist
+
+After implementing all fixes:
+
+1. **Loading Speed**:
+   - Open DevTools Network tab
+   - Navigate to settlement detail page
+   - Verify buildings API is called only ONCE
+   - Initial render should be <1 second with cached data
+
+2. **Camera Positioning**:
+   - Map should center on buildings immediately
+   - No empty space above/below/left/right
+   - All buildings visible on initial view
+   - Zoom in/out should work smoothly
+
+3. **Background Size**:
+   - Open browser console
+   - Look for "Creating dynamic background" log
+   - Background width/height should be ~2x the building spread
+   - Should NOT be 10000x10000
+
+4. **Character Movement**:
+   - Characters should update position every 10 seconds
+   - Look for "Character X moving:" logs in console
+   - Smooth GSAP animation should be visible
+   - Characters shouldn't teleport
+
+5. **Building Display**:
+   - All placed buildings should be visible
+   - Correct colors by type (green=Residential, red=Military, etc)
+   - Click handlers should work
+   - Status indicators (destroyed/damaged/active) should show
+
+## Performance Improvements Expected
+
+**Before Fixes**:
+- Initial load: 3-5 seconds (duplicate API calls)
+- Empty space: 98% wasted pixels
+- Character updates: Every 5 minutes (invisible)
+- Buildings: Hard to find, tiny dots
+
+**After Fixes**:
+- Initial load: <1 second (single API call + cache)
+- Empty space: <10% padding around content
+- Character updates: Every 10 seconds (visible movement)
+- Buildings: Centered, properly sized, immediately visible
+
+## Additional Optimizations (Optional)
+
+### 1. Add Loading States
+```typescript
+{isLoading && (
+  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-card p-6 rounded-lg">
+      <Building className="w-8 h-8 animate-pulse mx-auto mb-2" />
+      <p>Rendering {buildings.length} buildings...</p>
+    </div>
+  </div>
+)}
+```
+
+### 2. Add FPS Counter
+```typescript
+// In PixiSettlementMap component
+const [fps, setFps] = useState(60);
+
+useEffect(() => {
+  if (!appRef.current) return;
+  
+  const app = appRef.current;
+  let lastTime = performance.now();
+  
+  const updateFps = () => {
+    const currentTime = performance.now();
+    const delta = currentTime - lastTime;
+    setFps(Math.round(1000 / delta));
+    lastTime = currentTime;
+  };
+  
+  app.ticker.add(updateFps);
+  return () => app.ticker.remove(updateFps);
+}, [isPixiReady]);
+
+// Display in UI
+<div className="absolute top-4 left-4 bg-card px-3 py-2">
+  <span className="text-xs">{fps} FPS</span>
+</div>
+```
+
+### 3. Add Minimap
+```typescript
+// Small overview map in corner showing full settlement
+const createMinimap = () => {
+  const minimapSize = 150;
+  const minimapContainer = new PIXI.Container();
+  minimapContainer.position.set(10, 10);
+  
+  // Add background
+  const bg = new PIXI.Graphics();
+  bg.beginFill(0x000000, 0.5);
+  bg.drawRect(0, 0, minimapSize, minimapSize);
+  minimapContainer.addChild(bg);
+  
+  // Add simplified building dots
+  buildings.forEach(b => {
+    const dot = new PIXI.Graphics();
+    dot.beginFill(0xff0000);
+    dot.drawCircle(
+      (b.xCoordinate / worldWidth) * minimapSize,
+      (b.zCoordinate / worldHeight) * minimapSize,
+      2
+    );
+    minimapContainer.addChild(dot);
+  });
+  
+  uiLayer.addChild(minimapContainer);
+};
+```
+
+## Debugging Tips
+
+If issues persist after implementing fixes:
+
+1. **Check Console Logs**:
+   - Look for "Creating dynamic background" with proper width/height
+   - Look for "Fitting camera" with valid bounds
+   - Look for "Character X moving" when positions change
+
+2. **Verify API Data**:
+   ```typescript
+   console.log('Buildings:', buildings);
+   console.log('First building coords:', buildings[0]);
+   console.log('Characters:', characters);
+   console.log('First character coords:', characters[0]);
+   ```
+
+3. **Check Coordinate System**:
+   - Buildings should use xCoordinate and zCoordinate
+   - zCoordinate is the "vertical" axis on the 2D map
+   - Characters should match this coordinate system
+
+4. **Verify Render Order**:
+   - Background should render first
+   - Buildings should render second
+   - Characters should render last
+   - Camera fit should happen after all renders complete
+
+## Summary
+
+The key fixes are:
+
+1. **Remove duplicate loading** - pass data as props instead of loading in child
+2. **Dynamic background** - size to content instead of massive 10000x10000
+3. **Fix camera timing** - fit AFTER buildings render, not before
+4. **Increase polling** - update character positions every 10s instead of 5min
+5. **Add coordinates** - ensure outdoor characters have x/y/z coords
+
+These changes will dramatically improve performance and user experience!

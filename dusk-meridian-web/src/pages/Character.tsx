@@ -9,7 +9,7 @@ import { ROUTES } from '@/utils/constants';
 export const Character: React.FC = () => {
   const navigate = useNavigate();
   const { user, walletAddress, connectWallet, isLoading: authLoading } = useIMXAuth();
-  const [characters, setCharacters] = useState<{characters?: CharacterTypes.Character[]}>({});
+  const [characters, setCharacters] = useState<CharacterTypes.Character[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,14 +19,14 @@ export const Character: React.FC = () => {
 
   // Auto-reload characters when wallet gets connected
   useEffect(() => {
-    if (walletAddress && (characters?.characters?.length || 0) === 0 && !isLoading && !error) {
+    if (walletAddress && characters.length === 0 && !isLoading && !error) {
       loadCharacters();
     }
-  }, [walletAddress, characters?.characters?.length, isLoading, error]);
+  }, [walletAddress, characters.length, isLoading, error]);
 
   const loadCharacters = async () => {
     if (!walletAddress) {
-      setCharacters({});
+      setCharacters([]);
       setIsLoading(false);
       return;
     }
@@ -35,7 +35,9 @@ export const Character: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const data = await characterApi.getCharacters();
-      setCharacters(data);
+      // Handle both wrapped and direct array responses
+      const characterArray = Array.isArray(data) ? data : (data?.characters || []);
+      setCharacters(characterArray);
     } catch (err) {
       console.error('Failed to load characters:', err);
       setError('Failed to load characters. Please check if the game server is running.');
@@ -157,7 +159,7 @@ export const Character: React.FC = () => {
     );
   }
 
-  if ((characters?.characters?.length || 0) === 0) {
+  if (characters.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
@@ -195,7 +197,7 @@ export const Character: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold">My Characters</h1>
             <p className="text-muted-foreground">
-              {characters?.characters?.length || 0} character{(characters?.characters?.length || 0) !== 1 ? 's' : ''} found for wallet:
+              {characters.length || 0} character{(characters.length || 0) !== 1 ? 's' : ''} found for wallet:
               <span className="font-mono ml-1">{walletAddress?.slice(0, 8)}...{walletAddress?.slice(-6)}</span>
             </p>
           </div>
@@ -211,7 +213,7 @@ export const Character: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {(() => {
             // Extract the characters array from the response object
-            const characterList = characters?.characters || [];
+            const characterList = characters || [];
             return characterList.map((character) => {
             const ClassIcon = getClassIcon(character.class);
 

@@ -1,0 +1,40 @@
+  async login(): Promise<IMXUser | null> {
+    if (!this.passportInstance) {
+      console.warn('IMX Passport not initialized. Please configure IMX environment variables.');
+      return null;
+    }
+
+    try {
+      const userProfile = await this.passportInstance.login();
+
+      if (userProfile) {
+        // Fetch tokens separately as they're not included in userProfile
+        const accessToken = await this.getAccessToken();
+        const idToken = await this.getIdToken();
+        
+        const user: IMXUser = {
+          sub: userProfile.sub,
+          email: userProfile.email,
+          nickname: userProfile.nickname,
+          picture: userProfile.picture,
+          accessToken: accessToken || undefined,
+          idToken: idToken || undefined,
+        };
+
+        // Try to get wallet address
+        try {
+          const walletAddress = await this.getWalletAddress();
+          user.walletAddress = walletAddress;
+        } catch (walletError) {
+          console.warn('Could not get wallet address:', walletError);
+        }
+
+        return user;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  }
